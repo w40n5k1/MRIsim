@@ -57,6 +57,5 @@ the page with the two load buttons.
 ## Model and file formats
 
 The physical model and the formats of the sequence, phantom and tissue files are common to both versions and are
-specified once, in the README of the Python version (`python/README.md` in the repository,
-`MRI_sequencelab_py\README.md` in the working copy). In the browser, sequence expressions are evaluated as
-JavaScript: load only files from a source you trust.
+specified once, in the README of the Python version (`MRI_sequencelab_py/README.md`, next to this folder). In the
+browser, sequence expressions are evaluated as JavaScript: load only files from a source you trust.

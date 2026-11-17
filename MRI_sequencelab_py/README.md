@@ -22,8 +22,8 @@ tests/                samples = DFT(M0) x decay; the textbook spin-echo formula;
 ```
 
 Requirements: Python 3.10+, numpy, matplotlib (pillow for .gif, ffmpeg for .mp4); scipy and tkinter for the phantom
-editor only; pytest for the tests (`python -m pytest -q`; the two checks against the browser version need its folder
-next to this one, and the engine cross-check needs node: they are skipped otherwise).
+editor only; pytest for the tests (`python -m pytest -q`; the two checks against the browser version need its folder,
+`MRI_sequencelab_web`, next to this one, and the engine cross-check needs node: they are skipped otherwise).
 
 ## Use
 

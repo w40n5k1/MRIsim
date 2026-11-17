@@ -3,8 +3,8 @@
     tissues.json            = tissues.json
     sequences/NAME.json     = seq_NAME.json
     phantoms/NAME.json      = phantom_NAME.json
-This test compares the two sets when the browser version's folder sits next to this package (web/ in the
-repository, MRI_sequencelab_web/ in the working copy) and is skipped otherwise.  A skip is not a pass.
+This test compares the two sets when the browser version's folder, MRI_sequencelab_web/, sits next to this
+package, and is skipped otherwise.  A skip is not a pass.
 """
 import json
 import pathlib
@@ -12,8 +12,9 @@ import pathlib
 import pytest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-WEB = next((ROOT.parent / d for d in ("web", "MRI_sequencelab_web", "lab")
-            if (ROOT.parent / d / "seq_engine_v1.js").exists()), None)
+WEB = ROOT.parent / "MRI_sequencelab_web"          # the browser version, next to this package
+if not (WEB / "seq_engine_v1.js").exists():
+    WEB = None
 
 
 def _load(path):

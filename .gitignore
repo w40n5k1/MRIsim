@@ -6,6 +6,6 @@ __pycache__/
 *.mp4
 .DS_Store
 Thumbs.db
-# by-products of web/lab_build_v1.py and web/test_lab_v1.js
-web/*_body.html
-web/seq_*.svg
+# by-products of lab_build_v1.py and test_lab_v1.js
+MRI_sequencelab_web/*_body.html
+MRI_sequencelab_web/seq_*.svg

@@ -1,14 +1,14 @@
 # By Bruno Mota - METAbio
-"""Tests of the simulation engine.  Run from the python/ folder:  python -m pytest -q
+"""Tests of the simulation engine.  Run from the folder of this package:  python -m pytest -q
 
 1. test_samples_are_dft: for spin echo and fast spin echo, every acquired sample equals the DFT of M0 at its
    (kx, ky), times the T2 decay since the center of the excitation pulse, times the longitudinal magnetization
    available at that instant (relative to the sum of M0).  This is the model's defining property: the readout
    samples the Fourier transform of the object, and the pulses are instantaneous.
 2. test_matches_javascript: the Python engine and the JavaScript engine of the browser page give the same
-   samples for the same sequence file and phantom.  Needs node and the browser version's folder next to this
-   package (web/ in the repository, MRI_sequencelab_web/ in the working copy); skipped otherwise, and a skip is
-   not a pass: read the summary line.
+   samples for the same sequence file and phantom.  Needs node and the browser version's folder,
+   MRI_sequencelab_web/, next to this package; skipped otherwise, and a skip is not a pass: read the summary
+   line.
 3. test_no_spoiler_labels_and_ghost: without the spoiler every k cell is still acquired once (the k label resets
    at each excitation), and the only difference is the ghost of the previous shot's transverse magnetization,
    negligible when TR >> T2 and visible when TR ~ T2.
@@ -56,9 +56,8 @@ def test_samples_are_dft(seq, N):
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
 @pytest.mark.parametrize("seq,phantom", [("spin_echo", "square_air"), ("fast_spin_echo", "square"), ("flair", "brain")])
 def test_matches_javascript(seq, phantom):
-    # the browser version sits next to this package: web/ in the repository, MRI_sequencelab_web/ in the working copy
-    js = next((c for c in (ROOT.parent / d / "seq_engine_v1.js" for d in ("web", "MRI_sequencelab_web", "lab")) if c.exists()), None)
-    if js is None:
+    js = ROOT.parent / "MRI_sequencelab_web" / "seq_engine_v1.js"          # the browser version, next to this package
+    if not js.exists():
         pytest.skip("JavaScript engine not found next to the package")
     N = 9
     defn = load_json(ROOT / "sequences" / f"{seq}.json")

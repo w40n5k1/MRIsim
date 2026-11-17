@@ -1,0 +1,80 @@
+{
+  "format": "didactic-mri-phantom/1",
+  "coordinates": "x, y in [-1, 1] over the field of view; shapes are painted in order over the background; a disk is at least one pixel",
+  "id": "brain",
+  "name": {
+    "pt": "cérebro",
+    "en": "brain"
+  },
+  "background": "air",
+  "shapes": [
+    {
+      "type": "disk",
+      "tissue": "fat",
+      "center": [
+        0,
+        0
+      ],
+      "r": 0.94,
+      "note": "scalp"
+    },
+    {
+      "type": "disk",
+      "tissue": "bone",
+      "center": [
+        0,
+        0
+      ],
+      "r": 0.875,
+      "note": "skull"
+    },
+    {
+      "type": "disk",
+      "tissue": "csf",
+      "center": [
+        0,
+        0
+      ],
+      "r": 0.805,
+      "note": "subarachnoid CSF"
+    },
+    {
+      "type": "disk",
+      "tissue": "gm",
+      "center": [
+        0,
+        0
+      ],
+      "r": 0.715,
+      "note": "cortex"
+    },
+    {
+      "type": "disk",
+      "tissue": "wm",
+      "center": [
+        0,
+        0
+      ],
+      "r": 0.565
+    },
+    {
+      "type": "disk",
+      "tissue": "csf",
+      "center": [
+        0,
+        0
+      ],
+      "r": 0.185,
+      "note": "ventricle"
+    },
+    {
+      "type": "disk",
+      "tissue": "lesion",
+      "center": [
+        0.336,
+        0.26
+      ],
+      "r": 0.103
+    }
+  ]
+}

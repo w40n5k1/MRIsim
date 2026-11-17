@@ -13,13 +13,13 @@
       "tissue": "gm",
       "x": [
         -1.0,
-        -0.62
+        -0.6
       ],
       "y": [
         -1.0,
         1.0
       ],
-      "note": "stem"
+      "note": "stem, round(N/5) pixels thick"
     },
     {
       "type": "rect",
@@ -29,7 +29,7 @@
         1.0
       ],
       "y": [
-        0.62,
+        0.6,
         1.0
       ],
       "note": "top bar"
@@ -42,10 +42,10 @@
         0.25
       ],
       "y": [
-        -0.2,
-        0.18
+        -0.16,
+        0.25
       ],
-      "note": "middle bar"
+      "note": "middle bar, 40% down the stem"
     }
   ]
 }

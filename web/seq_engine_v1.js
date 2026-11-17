@@ -27,31 +27,40 @@
   'use strict';
   // N (odd) pixels per side; pixel p = row*N + col, row 0 at the top (y = +HALF), x = col - HALF
   function pixelXY(p, N) { const H = (N - 1) / 2; return { x: (p % N) - H, y: H - Math.floor(p / N) }; }
-  const PHANTOM_NAMES = ['squareAir', 'letterFAir', 'uniform', 'square', 'letterF', 'ramp', 'brain'];
-  // Phantoms are tissue maps: every pixel has a tissue label (from a tissue dictionary {key: {pd, T1, T2, color, name}})
-  // and an optional proton-density factor. Returns {label[], pdf[], M0[], T1[], T2[], tissues}, any odd N.
-  function phantom(name, N, tissues) {
-    const H = (N - 1) / 2, NP = N * N, at = (x, y) => (H - y) * N + (x + H);
-    const label = new Array(NP).fill(name.endsWith('Air') ? 'air' : 'wm'), pdf = new Array(NP).fill(1);
-    if (name.endsWith('Air')) name = name.slice(0, -3);                 // filled/empty versions: figure on air
-    if (name === 'uniform') label.fill('gm');
-    else if (name === 'square') { const h = Math.max(1, Math.floor(0.3 * N)); for (let y = -h; y <= h; y++) for (let x = -h; x <= h; x++) label[at(x, y)] = 'gm'; }
-    else if (name === 'letterF') {
-      const t = Math.max(1, Math.round(N / 5)), x0 = -H, wTop = N - 1, wMid = Math.round(0.6 * (N - 1)), yMid = H - Math.round(0.4 * (N - 1));
-      for (let y = -H; y <= H; y++) for (let k = 0; k < t; k++) label[at(x0 + k, y)] = 'gm';
-      for (let k = 0; k < t; k++) for (let x = x0; x <= x0 + wTop; x++) label[at(x, H - k)] = 'gm';
-      for (let k = 0; k < t; k++) for (let x = x0; x <= x0 + wMid; x++) label[at(x, yMid - k)] = 'gm';
-    } else if (name === 'ramp') { label.fill('gm'); for (let p = 0; p < NP; p++) pdf[p] = 0.2 + 0.8 * (p % N) / Math.max(1, N - 1); }
-    else if (name === 'brain') {
-      // concentric head: air, scalp fat, skull, CSF, gray matter, white matter, CSF ventricle at the center, one lesion
-      const R = 0.46 * N + 0.1;
-      for (let y = -H; y <= H; y++) for (let x = -H; x <= H; x++) {
-        const r = Math.hypot(x, y) / R; let k;
-        if (r > 1.0) k = 'air'; else if (r > 0.93) k = 'fat'; else if (r > 0.86) k = 'bone'; else if (r > 0.76) k = 'csf'; else if (r > 0.6) k = 'gm'; else if (r < 0.2) k = 'csf'; else k = 'wm';
-        if (k === 'wm' && x > 0 && y > 0 && Math.hypot(x - 0.36 * R, y - 0.28 * R) <= Math.max(0.5, 0.11 * R)) k = 'lesion';
-        label[at(x, y)] = k;
+  /* ---------- phantoms (format didactic-mri-phantom/1) ----------
+   * A phantom file names a background tissue and lists shapes painted in order, in coordinates normalized to [-1, 1]
+   * over the field of view (pixel centers at x = (col - H)/(N/2), y = (H - row)/(N/2)):
+   *   {type: 'rect', tissue, x: [x0, x1], y: [y0, y1]}   {type: 'disk', tissue, center: [cx, cy], r}   (a disk claims at least its nearest pixel)
+   * or carries a painted pixel map, grid: {N, labels: [[keys...], ...]}, resampled to any odd N by nearest pixel (shapes go on top).
+   * An optional pd expression in x, y multiplies the tissue's proton density.
+   * renderPhantom returns {label[], pdf[], M0[], T1[], T2[], tissues} for the N x N grid (pixel p = row*N + col). */
+  function resampleGrid(grid, N) {
+    const rows = grid.labels, n = grid.N || rows.length;
+    if (rows.length !== n || rows.some(r => r.length !== n)) throw new Error('phantom grid is not N x N');
+    const src = []; for (let i = 0; i < N; i++) src.push(Math.min(n - 1, Math.max(0, Math.round((i - (N - 1) / 2) * n / N + (n - 1) / 2))));
+    const out = []; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) out.push(rows[src[i]][src[j]]);
+    return out;
+  }
+  function renderPhantom(def, N, tissues) {
+    if (N % 2 === 0 || N < 1) throw new Error('N must be odd');
+    const H = (N - 1) / 2, NP = N * N, X = new Array(NP), Y = new Array(NP);
+    for (let p = 0; p < NP; p++) { const q = pixelXY(p, N); X[p] = q.x; Y[p] = q.y; }
+    let label = def.grid ? resampleGrid(def.grid, N) : new Array(NP).fill(def.background || 'air');
+    for (const sh of def.shapes || []) {
+      for (let p = 0; p < NP; p++) {
+        const xn = X[p] / (N / 2), yn = Y[p] / (N / 2);
+        if (sh.type === 'rect') { if (xn >= sh.x[0] && xn <= sh.x[1] && yn >= sh.y[0] && yn <= sh.y[1]) label[p] = sh.tissue; }
+        else if (sh.type !== 'disk') throw new Error('unknown shape ' + sh.type);
       }
-    } else throw new Error('unknown phantom ' + name);
+      if (sh.type === 'disk') {
+        const [cx, cy] = sh.center || [0, 0], rpx = Math.max(sh.r * N / 2, 0.5);
+        let best = 0, bestD = Infinity, any = false;
+        for (let p = 0; p < NP; p++) { const d = Math.hypot(X[p] - cx * N / 2, Y[p] - cy * N / 2); if (d <= rpx) { label[p] = sh.tissue; any = true; } if (d < bestD) { bestD = d; best = p; } }
+        if (!any) label[best] = sh.tissue;
+      }
+    }
+    const pdf = new Array(NP).fill(1);
+    if (def.pd) for (let p = 0; p < NP; p++) pdf[p] = evalExpr(def.pd, { x: X[p] / (N / 2), y: Y[p] / (N / 2), N });
     const M0 = new Array(NP), T1 = new Array(NP), T2 = new Array(NP);
     for (let p = 0; p < NP; p++) { const t = tissues[label[p]]; if (!t) throw new Error('unknown tissue ' + label[p]); M0[p] = t.pd * pdf[p]; T1[p] = t.T1; T2[p] = t.T2; }
     return { label, pdf, M0, T1, T2, tissues };
@@ -267,5 +276,5 @@
     for (const s of S.shots) ts.add(s.T0 + s.tActive);
     return [...ts].sort((a, b) => a - b);
   }
-  return { PHANTOM_NAMES, phantom, pixelXY, range, centric, indexOf, rev, evalExpr, fmtText, paramDefaults, compile, simulate, indexAt, segmentAt, eventTimes };
+  return { renderPhantom, resampleGrid, pixelXY, range, centric, indexOf, rev, evalExpr, fmtText, paramDefaults, compile, simulate, indexAt, segmentAt, eventTimes };
 });

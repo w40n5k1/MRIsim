@@ -6,7 +6,7 @@ const E = require('./seq_engine_v1.js'), D = require('./seq_draw_v1.js'), fs = r
 const TIS = JSON.parse(fs.readFileSync('tissues.json', 'utf8')).tissues;
 for (const file of ['seq_spin_echo.json', 'seq_fast_spin_echo.json']) for (const N of [3, 5, 9]) {
   const def = JSON.parse(fs.readFileSync(file, 'utf8')), P = E.paramDefaults(def), S = E.compile(def, P, 'pt', N);
-  const M0 = E.phantom('square', N, TIS).M0, relax = { T1: def.relax.T1, T2: def.relax.T2 }, sim = E.simulate(S, M0, relax);
+  const M0 = E.renderPhantom(JSON.parse(fs.readFileSync('phantom_square.json', 'utf8')), N, TIS).M0, relax = { T1: def.relax.T1, T2: def.relax.T2 }, sim = E.simulate(S, M0, relax);
   const rfs = S.events.filter(e => e.type === 'rf'); let worst = 0;
   for (const s of sim.samples) {
     let re = 0, im = 0; for (let p = 0; p < N * N; p++) { const q = E.pixelXY(p, N), ph = -2 * Math.PI * (s.kx * q.x + s.ky * q.y) / N; re += M0[p] * Math.cos(ph); im += M0[p] * Math.sin(ph); }
@@ -33,4 +33,12 @@ for (const file of ['seq_spin_echo.json', 'seq_fast_spin_echo.json']) for (const
   }
   console.log('spin echo vs textbook steady-state formula: worst relative error', worst.toExponential(2));
   if (worst > 1e-5) throw new Error('spin-echo formula check failed');
+}
+
+// (3) phantom files: the painted face renders at its own N and resamples to others; the brain's lesion survives at N = 5
+{
+  const face = JSON.parse(fs.readFileSync('phantom_face.json', 'utf8')), brain = JSON.parse(fs.readFileSync('phantom_brain.json', 'utf8'));
+  const f15 = E.renderPhantom(face, 15, TIS), f9 = E.renderPhantom(face, 9, TIS), b5 = E.renderPhantom(brain, 5, TIS);
+  if (f15.label.length !== 225 || f9.label.length !== 81 || !b5.label.includes('lesion') || !f9.label.includes('lesion')) throw new Error('phantom file check failed');
+  console.log('phantom files: face 15 ->', new Set(f15.label).size, 'tissues; face resampled to 9 ok; brain at 5 has its lesion');
 }

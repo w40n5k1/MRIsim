@@ -45,6 +45,8 @@ button { font: inherit; font-weight: 500; color: var(--fg); background: var(--pa
 button:hover { border-color: var(--accent); }
 button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 button.primary { background: var(--accent); color: #fff; border-color: transparent; min-width: 6.5em; }
+a.btnlink { font: inherit; font-weight: 500; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 5px 11px; text-decoration: none; }
+a.btnlink:hover { border-color: var(--accent); }
 input[type=range] { width: 110px; accent-color: var(--accent); }
 select { font: inherit; font-size: 1rem; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; }
 option { font: inherit; font-size: 1rem; font-weight: 400; color: var(--fg); background: var(--panel2); padding: 4px 6px; }   /* the drop-down list does not inherit the select's font reliably */
@@ -120,13 +122,15 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--line);
       <label>T2 <input type="range" id="T2" min="5" max="505" step="5" value="60"><span class="v" id="vT2"></span></label>
     </div>
     <div class="grp">
-      <label><span id="lPhantom"></span> <select id="phantom"><option value="squareAir" selected></option><option value="letterFAir"></option><option value="uniform"></option><option value="square"></option><option value="letterF"></option><option value="ramp"></option><option value="brain"></option></select></label>
+      <label><span id="lPhantom"></span> <select id="phantom"></select></label>
       <label>N <select id="nsel"><option>3</option><option selected>5</option><option>7</option><option>9</option><option>11</option><option>13</option><option>15</option></select></label>
       <label><input type="checkbox" id="linear"> <span id="lLinear"></span></label>
       <label><input type="checkbox" id="compress" checked> <span id="lCompress"></span></label>
       <button id="copysvg"></button>
       <button id="loadseq"></button><input type="file" id="seqfile" accept=".json,application/json">
       <button id="copyseq"></button>
+      <button id="loadph"></button><input type="file" id="phfile" accept=".json,application/json">
+      <a id="editorLink" class="btnlink" href="phantom_editor_v1.html" target="_blank" rel="noopener"></a>
       <button id="lang">EN</button>
     </div>
     <div class="err" id="err"></div>
@@ -188,6 +192,7 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--line);
 <script>/*__ENGINE__*/</script>
 <script>/*__DRAW__*/</script>
 <script>/*__TISSUES__*/</script>
+<script>/*__PHANTOMS__*/</script>
 <script>/*__SEQS__*/</script>
 <script>
 (function () {
@@ -196,7 +201,7 @@ const $ = id => document.getElementById(id);
 const I18N = {
   pt: {
     play: '▶ Aquisição', pause: '❚❚ Pausar', reset: '⟲ Início', prev: '◀ evento', next: 'evento ▶', speed: 'velocidade',
-    phantom: 'objeto', squareAir: 'quadrado (cheio/vazio)', letterFAir: 'letra F (cheio/vazio)', uniform: 'uniforme (SC)', square: 'quadrado (SC sobre SB)', letterF: 'letra F (SC sobre SB)', ramp: 'rampa de M₀ (SC)', brain: 'cérebro', uniformDesc: '', 
+    phantom: 'objeto', loadph: 'carregar fantoma (.json)', editor: 'editor de fantomas ↗', loadedPh: 'fantoma carregado: ', errPh: 'fantoma inválido: ', uniformDesc: '', 
     modeDensity: 'intensidade', modePhase: 'intensidade + fase', modeTissue: 'tecido', relaxOverride: 'T1/T2 globais (ignorar tecidos)', tissueHdr: 'tecido: PD · T1 · T2 (ms, 3 T)', linear: 'intensidade linear (sem √)', compress: 'comprimir TR', loadseq: 'carregar sequência (.json)', copyseq: 'copiar JSON da sequência', lang: 'EN', copy: 'copiar SVG do diagrama', copied: 'copiado ✓', copyFail: 'falhou — selecione e copie',
     tSpins: n => `Matriz ${n}×${n} de pixels (referencial girante)`, sSpinsDensity: 'escala de cinza = densidade de prótons M₀ · vermelho: M · azul: M∥ (z) e M⊥ (xy)', sSpinsTissue: 'cor = tecido (T1, T2 e M₀ próprios) · vermelho: M · azul: M∥ (z) e M⊥ (xy)', sSpinsPhase: 'cor = fase de M⊥ · intensidade = |M⊥| · vermelho: M · azul: M∥ (z) e M⊥ (xy)',
     tK: 'Espaço k (kₓ, k_y)', peDesc: 'codificação por fase', feDesc: 'codificação por frequência', envDesc: 'e<tspan dy="-5" font-size="8">−t/T2</tspan>',
@@ -252,7 +257,7 @@ const I18N = {
   },
   en: {
     play: '▶ Acquire', pause: '❚❚ Pause', reset: '⟲ Start', prev: '◀ event', next: 'event ▶', speed: 'speed',
-    phantom: 'phantom', squareAir: 'square (filled/empty)', letterFAir: 'letter F (filled/empty)', uniform: 'uniform (GM)', square: 'square (GM on WM)', letterF: 'letter F (GM on WM)', ramp: 'M₀ ramp (GM)', brain: 'brain', 
+    phantom: 'phantom', loadph: 'load phantom (.json)', editor: 'phantom editor ↗', loadedPh: 'phantom loaded: ', errPh: 'invalid phantom: ', 
     modeDensity: 'intensity', modePhase: 'intensity + phase', modeTissue: 'tissue', relaxOverride: 'global T1/T2 (ignore tissues)', tissueHdr: 'tissue: PD · T1 · T2 (ms, 3 T)', linear: 'linear intensity (no √)', compress: 'compress TR', loadseq: 'load sequence (.json)', copyseq: 'copy sequence JSON', lang: 'PT', copy: 'copy diagram SVG', copied: 'copied ✓', copyFail: 'failed — select and copy',
     tSpins: n => `${n}×${n} pixel array (rotating frame)`, sSpinsDensity: 'gray scale = proton density M₀ · red: M · blue: M∥ (z) and M⊥ (xy)', sSpinsTissue: 'color = tissue (own T1, T2 and M₀) · red: M · blue: M∥ (z) and M⊥ (xy)', sSpinsPhase: 'color = phase of M⊥, intensity = |M⊥| · red: M · blue: M∥ (z) and M⊥ (xy)',
     tK: 'k-space (kₓ, k_y)', peDesc: 'phase encoding', feDesc: 'frequency encoding', envDesc: 'e<tspan dy="-5" font-size="8">−t/T2</tspan>',
@@ -308,12 +313,25 @@ const I18N = {
   }
 };
 const E = SeqEngine, D = SeqDraw;
-const st = { defs: {}, order: [], seqId: 'se', def: null, P: {}, S: null, N: 5, phantom: 'squareAir', lang: 'pt', cellMode: 'density', linear: false, compress: true, scrubbing: false,
+const st = { defs: {}, order: [], phantomDefs: {}, seqId: 'se', def: null, P: {}, S: null, N: 5, phantom: 'squareAir', lang: 'pt', cellMode: 'density', linear: false, compress: true, scrubbing: false,
   speed: 10, u: 0, playing: false, sim: null, L: null, raf: 0, last: 0, cursorEl: null, revealEl: null, hlEl: null, events: [] };
 const EPS = 22 * Math.PI / 180;          // elevation of the view: the equator becomes an ellipse of aspect sin(EPS)
 
 function L() { return I18N[st.lang]; }
-function PH() { if (!st.ph || st.ph.name !== st.phantom || st.ph.N !== st.N) st.ph = Object.assign({ name: st.phantom, N: st.N }, E.phantom(st.phantom, st.N, TISSUES)); return st.ph; }
+// phantoms: {id: definition}; rendered by the engine at the current N (cached until the phantom or N changes)
+function PH() { if (!st.ph || st.ph.name !== st.phantom || st.ph.N !== st.N) st.ph = Object.assign({ name: st.phantom, N: st.N }, E.renderPhantom(st.phantomDefs[st.phantom], st.N, TISSUES)); return st.ph; }
+function registerPhantom(def) {
+  if (!def || typeof def !== 'object' || !def.id || (!Array.isArray(def.shapes) && !def.grid)) throw new Error('not a phantom file');
+  E.renderPhantom(def, def.grid ? (def.grid.N || def.grid.labels.length) : st.N, TISSUES);      // validate (tissue keys, grid shape)
+  if (!st.phantomDefs[def.id]) { const o = document.createElement('option'); o.value = def.id; $('phantom').appendChild(o); }
+  st.phantomDefs[def.id] = def;
+}
+// choose a phantom; a painted (grid) phantom brings its own N with it
+function selectPhantom(id) {
+  st.phantom = id; $('phantom').value = id;
+  const g = st.phantomDefs[id].grid;
+  if (g) { const n = g.N || g.labels.length; if ([...$('nsel').options].some(o => +o.value === n) && st.N !== n) { st.N = n; $('nsel').value = String(n); fPause(); F.step = -1; F.phase = 0; F.data = null; st.u = 0; } }
+}
 function M0() { return PH().M0; }
 const NSPHERE = 9, NARROW = 15;   // Bloch spheres drawn up to N = NSPHERE; transverse arrows only up to NARROW
 function nModes() { return (st.N * st.N + 1) / 2; }
@@ -363,7 +381,8 @@ function applyLang() {
   for (const o of $('seqSel').options) o.textContent = loc(st.defs[o.value].name);
   $('play').textContent = st.playing ? d.pause : d.play; $('reset').textContent = d.reset; $('prev').textContent = d.prev; $('next').textContent = d.next;
   $('lSpeed').textContent = d.speed; $('lPhantom').textContent = d.phantom;
-  for (const k of ['squareAir', 'letterFAir', 'uniform', 'square', 'letterF', 'ramp', 'brain']) $('phantom').querySelector(`option[value=${k}]`).textContent = d[k];
+  for (const o of $('phantom').options) o.textContent = loc(st.phantomDefs[o.value].name);
+  $('loadph').textContent = d.loadph; $('editorLink').textContent = d.editor;
   $('lModeDensity').textContent = d.modeDensity; $('lModePhase').textContent = d.modePhase; $('lModeTissue').textContent = d.modeTissue; $('lRelaxOverride').textContent = d.relaxOverride; $('lLinear').textContent = d.linear; $('lCompress').textContent = d.compress; $('lang').textContent = d.lang; $('copysvg').textContent = d.copy; $('loadseq').textContent = d.loadseq; $('copyseq').textContent = d.copyseq;
   buildParamControls();
   $('tSpins').textContent = d.tSpins(st.N); $('sSpins').textContent = st.cellMode === 'phase' ? d.sSpinsPhase : (st.cellMode === 'tissue' ? d.sSpinsTissue : d.sSpinsDensity);
@@ -412,7 +431,7 @@ function readSliders() {
 }
 function selectSequence(id) {
   st.seqId = id; st.def = st.defs[id]; st.P = E.paramDefaults(st.def);
-  if (st.def.phantom && $('phantom').querySelector(`option[value=${st.def.phantom}]`)) { st.phantom = st.def.phantom; $('phantom').value = st.phantom; }
+  if (st.def.phantom && st.phantomDefs[st.def.phantom]) selectPhantom(st.def.phantom);
   if (st.def.relax) { $('T1').value = Number.isFinite(st.def.relax.T1) ? st.def.relax.T1 : $('T1').max; $('T2').value = Number.isFinite(st.def.relax.T2) ? st.def.relax.T2 : $('T2').max; }
   $('seqSel').value = id; st.u = 0; pause(); fPause(); F.step = -1; F.phase = 0; F.data = null;
   applyLang(); rebuild();
@@ -758,7 +777,6 @@ function render() {
 
 /* ---------- wiring ---------- */
 for (const id of ['T1', 'T2']) $(id).addEventListener('input', () => { pause(); rebuild(); });
-$('phantom').addEventListener('change', () => applyLang());
 $('compress').addEventListener('change', e => { const t = st.L.tOf(st.u); st.compress = e.target.checked; pause(); rebuild(); st.u = st.L.uOf(t); render(); });
 $('seqSel').addEventListener('change', e => selectSequence(e.target.value));
 $('speed').addEventListener('input', readSliders);
@@ -767,7 +785,14 @@ $('freset').addEventListener('click', () => { fPause(); F.step = -1; F.phase = 0
 $('fprev').addEventListener('click', () => fStep(-1)); $('fnext').addEventListener('click', () => fStep(1));
 for (const inp of $('gainSeg').querySelectorAll('input')) inp.addEventListener('change', e => { if (e.target.checked) { F.gain = +e.target.value; for (const lb of $('gainSeg').querySelectorAll('label')) lb.classList.toggle('on', lb.contains(e.target)); if (st.sim) renderFourier(curIndex()); } });
 $('fspeed').addEventListener('input', () => { F.speed = +$('fspeed').value / 10; $('vFspeed').textContent = F.speed.toFixed(1) + ' ' + L().fspeedUnit; });
-$('phantom').addEventListener('change', e => { st.phantom = e.target.value; pause(); rebuild(); });
+$('phantom').addEventListener('change', e => { selectPhantom(e.target.value); pause(); applyLang(); rebuild(); });
+$('loadph').addEventListener('click', () => $('phfile').click());
+$('phfile').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => { try { const def = JSON.parse(rd.result); registerPhantom(def); selectPhantom(def.id); pause(); applyLang(); rebuild(); $('err').textContent = L().loadedPh + loc(def.name); } catch (ex) { $('err').textContent = L().errPh + ex.message; } };
+  rd.readAsText(file); e.target.value = '';
+});
 $('nsel').addEventListener('change', e => { st.N = +e.target.value; pause(); fPause(); F.step = -1; F.phase = 0; F.data = null; st.u = 0; applyLang(); rebuild(); });
 for (const id of ['modeDensity', 'modePhase', 'modeTissue']) $(id).addEventListener('change', e => { if (e.target.checked) { st.cellMode = e.target.value; $('labDensity').classList.toggle('on', st.cellMode === 'density'); $('labPhase').classList.toggle('on', st.cellMode === 'phase'); $('labTissue').classList.toggle('on', st.cellMode === 'tissue'); applyLang(); render(); } });
 $('relaxOverride').addEventListener('change', () => { pause(); rebuild(); });
@@ -812,6 +837,7 @@ const mq = window.matchMedia('(prefers-color-scheme: dark)');
 mq.addEventListener('change', () => { refreshTheme(); renderWheel(); render(); });
 new MutationObserver(() => { refreshTheme(); renderWheel(); render(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
+for (const def of PHANTOMS) registerPhantom(def);
 for (const def of SEQUENCES) registerSequence(def);
 refreshTheme(); selectSequence('se'); renderWheel();
 })();

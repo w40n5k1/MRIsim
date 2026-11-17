@@ -44,7 +44,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent      # folder holding sequ
 ALIEN = "#39ff14"                                          # frame color of the current-mode panel
 NS = (3, 5, 7, 9, 11, 13, 15)                              # matrix sizes offered
 # Didactic order of the built-in sequences and phantoms in the selectors; other files follow alphabetically.
-ORDER = ["se", "fse", "flair", "squareAir", "letterFAir", "uniform", "square", "letterF", "ramp", "brain"]
+ORDER = ["se", "fse", "flair", "squareAir", "letterFAir", "uniform", "square", "letterF", "ramp", "brain", "face"]
 
 # Interface texts.
 TXT = {
@@ -109,6 +109,9 @@ class Lab:
         self.ph_id = phantom_id or sequences[self.seq_id].get("phantom") or next(iter(phantoms))
         if self.ph_id not in phantoms:
             self.ph_id = next(iter(phantoms))
+        grid = phantoms[self.ph_id].get("grid") if fixed is None else None
+        if grid and int(grid.get("N", len(grid["labels"]))) in NS:
+            self.N = int(grid.get("N", len(grid["labels"])))          # a painted phantom brings its own N
         self.cell_mode = "tissue"
         self.gain = 1.0
         self.playing = self.fplaying = False      # acquisition playback / Fourier playback running
@@ -373,14 +376,29 @@ class Lab:
             self._quiet = True
             self.widgets["ph"].set_active(self.ph_ids.index(suggested))
             self._quiet = False
+            self._adopt_grid_n()
         self._rebuild()
 
     def _on_ph(self, label):
-        """Phantom radio."""
+        """Phantom radio; a painted (grid) phantom brings its own N with it."""
         if self._quiet:
             return
         self.ph_id = self.ph_ids[[l.get_text() for l in self.widgets["ph"].labels].index(label)]
+        self._adopt_grid_n()
         self._rebuild()
+
+    def _adopt_grid_n(self):
+        """If the chosen phantom is a painted grid, select its N (quietly, so the radio does not rebuild twice)."""
+        grid = self.phs[self.ph_id].get("grid")
+        if not grid:
+            return
+        n = int(grid.get("N", len(grid["labels"])))
+        if n in NS and n != self.N:
+            self.N = n
+            if "n" in self.widgets:
+                self._quiet = True
+                self.widgets["n"].set_active(NS.index(n))
+                self._quiet = False
 
     def _on_n(self, label):
         """Matrix-size radio."""

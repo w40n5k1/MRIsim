@@ -1,0 +1,11 @@
+{
+  "format": "didactic-mri-phantom/1",
+  "coordinates": "x, y in [-1, 1] over the field of view; shapes are painted in order over the background; a disk is at least one pixel",
+  "id": "uniform",
+  "name": {
+    "pt": "uniforme (SC)",
+    "en": "uniform (GM)"
+  },
+  "background": "gm",
+  "shapes": []
+}

@@ -1,0 +1,25 @@
+{
+  "format": "didactic-mri-phantom/1",
+  "coordinates": "x, y in [-1, 1] over the field of view; shapes are painted in order over the background; a disk is at least one pixel",
+  "id": "squareAir",
+  "name": {
+    "pt": "quadrado (cheio/vazio)",
+    "en": "square (filled/empty)"
+  },
+  "background": "air",
+  "shapes": [
+    {
+      "type": "rect",
+      "tissue": "gm",
+      "x": [
+        -0.6,
+        0.6
+      ],
+      "y": [
+        -0.6,
+        0.6
+      ],
+      "note": "side 2*floor(0.3 N) + 1 pixels"
+    }
+  ]
+}

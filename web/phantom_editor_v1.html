@@ -1,0 +1,610 @@
+<!doctype html>
+<!-- By Bruno Mota - METAbio -->
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Editor de fantomas</title><meta name="claude:viewport-fit-sides" content="cover"></head><body style="margin:0">
+<!-- By Bruno Mota - METAbio -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Same theme tokens as the Sequence Lab page. */
+:root {
+  --bg: #f1f4f8; --fg: #1b2330; --muted: #5c687a; --panel: #ffffff; --panel2: #e9edf3; --line: #cfd7e2;
+  --accent: #1d4f91; --sel: #c2185b;
+  --font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f141b; --fg: #e5eaf1; --muted: #9aa6b8; --panel: #171e28; --panel2: #202a37; --line: #2d3947; --accent: #3f74c4; --sel: #ff5c9a; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f141b; --fg: #e5eaf1; --muted: #9aa6b8; --panel: #171e28; --panel2: #202a37; --line: #2d3947; --accent: #3f74c4; --sel: #ff5c9a; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px 32px; }
+* { box-sizing: border-box; }
+h1 { font-size: 1.45rem; font-weight: 700; margin: 0; letter-spacing: -0.01em; }
+h1 small { font-weight: 400; color: var(--muted); font-size: 0.95rem; }
+h1 .ver { font-family: var(--mono); font-weight: 500; font-size: 0.75rem; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; vertical-align: middle; }
+p { margin: 0; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; max-width: 1100px; margin: 0 auto 12px; }
+.lead { color: var(--muted); max-width: 70ch; }
+main { max-width: 1100px; margin: 0 auto; display: grid; gap: 14px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.row label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+button, a.btnlink { font: inherit; font-weight: 500; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 5px 11px; cursor: pointer; text-decoration: none; }
+button:hover, a.btnlink:hover { border-color: var(--accent); }
+button:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.on { background: var(--accent); color: #fff; border-color: transparent; }
+select { font: inherit; font-size: 1rem; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; }
+input[type=file] { display: none; }
+.palette { display: flex; flex-wrap: wrap; gap: 8px; }
+.palette button { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border: 2px solid transparent; }
+.palette button i { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,.25); display: inline-block; }
+.palette button.sel { border-color: var(--sel); box-shadow: 0 0 0 2px color-mix(in srgb, var(--sel) 35%, transparent); }
+.work { display: grid; grid-template-columns: minmax(280px, 560px) minmax(220px, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 760px) { .work { grid-template-columns: 1fr; } }
+canvas { display: block; width: 100%; max-width: 560px; aspect-ratio: 1; background: #000; border: 1px solid var(--line); border-radius: 6px; cursor: crosshair; touch-action: none; }
+.tools { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.tools button { width: 100%; }
+.status { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); min-height: 1.4em; }
+.msg { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); min-height: 1.4em; }
+.msg.err { color: #c62828; }
+.help { color: var(--muted); font-size: 0.85rem; }
+.help b { color: var(--fg); font-weight: 600; }
+textarea { width: 100%; height: 7em; font-family: var(--mono); font-size: 0.8rem; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; }
+[hidden] { display: none !important; }
+</style>
+
+<header>
+  <h1 id="title"></h1>
+  <p class="lead" id="lead"></p>
+</header>
+<main>
+  <section class="panel">
+    <div class="row">
+      <button id="save"></button>
+      <button id="copy"></button>
+      <button id="load"></button><input type="file" id="file" accept=".json,application/json">
+      <label>N <select id="nsel"><option>3</option><option>5</option><option>7</option><option selected>9</option><option>11</option><option>13</option><option>15</option></select></label>
+      <label><span id="lName"></span> <input id="pname" type="text" size="14" value="fantoma"></label>
+      <a id="back" class="btnlink" href="index.html"></a>
+      <button id="lang">EN</button>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="palette" id="palette"></div>
+  </section>
+  <section class="work">
+    <div>
+      <canvas id="grid" width="560" height="560"></canvas>
+      <div class="status" id="status"></div>
+      <div class="msg" id="msg"></div>
+    </div>
+    <div class="panel">
+      <div class="tools" id="tools"></div>
+      <p class="help" id="help" style="margin-top:10px"></p>
+      <textarea id="json" hidden readonly></textarea>
+    </div>
+  </section>
+</main>
+
+<script>// By Bruno Mota - METAbio
+/* seq_engine_v1.js — generic engine for didactic 2D imaging sequences described as text (JSON).
+ *
+ * A sequence file declares parameters, derived variables and a list of events per shot (repetition):
+ *   rf    {t, dur, flip (deg), axis 'x'|'y', refocus?}   instantaneous pulse: the whole rotation is applied at the center t + dur/2
+ *                                                        and relaxation is never interrupted, so the textbook formulas hold exactly;
+ *                                                        dur is only the drawn width, inside which the displayed magnetization is the
+ *                                                        physical state turned by the angle accrued so far (visible rotation);
+ *                                                        refocus: k -> -k at the center, otherwise (excitation) the k label resets to 0
+ *   grad  {axis 'x'|'y', t, dur, area}                   constant lobe; area in dk = 1/FOV units (k moved by the lobe)
+ *   adc   {t, dur, n}                                    readout window; n samples at the centers of n equal sub-intervals
+ *   spoil {t}                                            ideal spoiler: transverse magnetization zeroed at t
+ *   repeat {count, var, vars?, events}                   loop; the loop variable and local vars are visible inside
+ * Numbers may be expressions (strings) in the parameters, the table values, the shot index n, loop variables and
+ * the derived vars (evaluated in order). Expressions are plain JavaScript arithmetic evaluated with Function();
+ * a sequence file is code you choose to run, like a notebook cell.
+ *
+ * Physics (same didactic model as the hand-written programs): N x N isochromats (N odd) at x,y in {-(N-1)/2..(N-1)/2}, rotating frame
+ * (precession only under gradients: m -> m exp(-i 2 pi (dkx x + dky y)/N)), instantaneous hard pulses, exponential relaxation,
+ * signal S = sum of (Mx + i My) over the pixels. Samples are the forward DFT of the pixel magnetizations.
+ * Units: ms, dk.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.SeqEngine = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+  // N (odd) pixels per side; pixel p = row*N + col, row 0 at the top (y = +HALF), x = col - HALF
+  function pixelXY(p, N) { const H = (N - 1) / 2; return { x: (p % N) - H, y: H - Math.floor(p / N) }; }
+  /* ---------- phantoms (format didactic-mri-phantom/1) ----------
+   * A phantom file names a background tissue and lists shapes painted in order, in coordinates normalized to [-1, 1]
+   * over the field of view (pixel centers at x = (col - H)/(N/2), y = (H - row)/(N/2)):
+   *   {type: 'rect', tissue, x: [x0, x1], y: [y0, y1]}   {type: 'disk', tissue, center: [cx, cy], r}   (a disk claims at least its nearest pixel)
+   * or carries a painted pixel map, grid: {N, labels: [[keys...], ...]}, resampled to any odd N by nearest pixel (shapes go on top).
+   * An optional pd expression in x, y multiplies the tissue's proton density.
+   * renderPhantom returns {label[], pdf[], M0[], T1[], T2[], tissues} for the N x N grid (pixel p = row*N + col). */
+  function resampleGrid(grid, N) {
+    const rows = grid.labels, n = grid.N || rows.length;
+    if (rows.length !== n || rows.some(r => r.length !== n)) throw new Error('phantom grid is not N x N');
+    const src = []; for (let i = 0; i < N; i++) src.push(Math.min(n - 1, Math.max(0, Math.round((i - (N - 1) / 2) * n / N + (n - 1) / 2))));
+    const out = []; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) out.push(rows[src[i]][src[j]]);
+    return out;
+  }
+  function renderPhantom(def, N, tissues) {
+    if (N % 2 === 0 || N < 1) throw new Error('N must be odd');
+    const H = (N - 1) / 2, NP = N * N, X = new Array(NP), Y = new Array(NP);
+    for (let p = 0; p < NP; p++) { const q = pixelXY(p, N); X[p] = q.x; Y[p] = q.y; }
+    let label = def.grid ? resampleGrid(def.grid, N) : new Array(NP).fill(def.background || 'air');
+    for (const sh of def.shapes || []) {
+      for (let p = 0; p < NP; p++) {
+        const xn = X[p] / (N / 2), yn = Y[p] / (N / 2);
+        if (sh.type === 'rect') { if (xn >= sh.x[0] && xn <= sh.x[1] && yn >= sh.y[0] && yn <= sh.y[1]) label[p] = sh.tissue; }
+        else if (sh.type !== 'disk') throw new Error('unknown shape ' + sh.type);
+      }
+      if (sh.type === 'disk') {
+        const [cx, cy] = sh.center || [0, 0], rpx = Math.max(sh.r * N / 2, 0.5);
+        let best = 0, bestD = Infinity, any = false;
+        for (let p = 0; p < NP; p++) { const d = Math.hypot(X[p] - cx * N / 2, Y[p] - cy * N / 2); if (d <= rpx) { label[p] = sh.tissue; any = true; } if (d < bestD) { bestD = d; best = p; } }
+        if (!any) label[best] = sh.tissue;
+      }
+    }
+    const pdf = new Array(NP).fill(1);
+    if (def.pd) for (let p = 0; p < NP; p++) pdf[p] = evalExpr(def.pd, { x: X[p] / (N / 2), y: Y[p] / (N / 2), N });
+    const M0 = new Array(NP), T1 = new Array(NP), T2 = new Array(NP);
+    for (let p = 0; p < NP; p++) { const t = tissues[label[p]]; if (!t) throw new Error('unknown tissue ' + label[p]); M0[p] = t.pd * pdf[p]; T1[p] = t.T1; T2[p] = t.T2; }
+    return { label, pdf, M0, T1, T2, tissues };
+  }
+  // helpers available to sequence expressions
+  function range(a, b, step) { step = step || (b >= a ? 1 : -1); const out = []; for (let v = a; step > 0 ? v <= b + 1e-9 : v >= b - 1e-9; v += step) out.push(v); return out; }
+  function centric(H) { const out = [0]; for (let k = 1; k <= H; k++) out.push(k, -k); return out; }
+  function indexOf(arr, v) { return arr.indexOf(v); }
+  function rev(arr) { return arr.slice().reverse(); }
+
+  /* ---------- expressions ---------- */
+  const fnCache = new Map();
+  function evalExpr(expr, ctx) {
+    if (typeof expr === 'number') return expr;
+    if (typeof expr === 'boolean') return expr ? 1 : 0;
+    if (expr == null) return 0;
+    if (typeof expr !== 'string') throw new Error('bad expression ' + JSON.stringify(expr));
+    const keys = Object.keys(ctx), sig = keys.join(',') + '|' + expr;
+    let fn = fnCache.get(sig);
+    if (!fn) { fn = new Function(...keys, 'with (Math) { return (' + expr + '); }'); fnCache.set(sig, fn); }
+    const v = fn(...keys.map(k => ctx[k]));
+    if (typeof v === 'boolean') return v ? 1 : 0;
+    if (typeof v !== 'number' || Number.isNaN(v)) throw new Error('expression "' + expr + '" gave ' + v);
+    return v;
+  }
+  function evalVars(vars, ctx) { if (!vars) return; for (const [k, e] of Object.entries(vars)) ctx[k] = evalExpr(e, ctx); }
+  // text templates: ${expr} substituted; |v| formatting helpers in ctx
+  function fmtText(tpl, ctx) {
+    return String(tpl).replace(/\$\{([^}]+)\}/g, (_, e) => {
+      const v = evalExpr(e, ctx); const r = Math.round(v * 100) / 100;
+      return (r > 0 && /^\+/.test(e) ? '+' : '') + (r < 0 ? '−' + (-r) : String(r));
+    });
+  }
+
+  /* ---------- compile: sequence definition + parameter values -> absolute schedule ---------- */
+  function paramDefaults(def) {
+    const P = {};
+    for (const p of def.params || []) P[p.id] = p.type === 'select' ? p.default : (p.type === 'checkbox' ? (p.default ? 1 : 0) : p.default);
+    return P;
+  }
+  function evalTable(v, ctx) { return typeof v === 'string' ? (new Function(...Object.keys(ctx), 'with (Math) { return (' + v + '); }'))(...Object.values(ctx)) : v; }
+  function baseContext(def, P, N) {
+    const ctx = { N, HALF: (N - 1) / 2, PI: Math.PI, range, centric, indexOf, rev };
+    for (const [k, v] of Object.entries(def.constants || {})) ctx[k] = v;
+    for (const [k, v] of Object.entries(def.tables || {})) ctx[k] = evalTable(v, ctx);
+    for (const p of def.params || []) {
+      if (p.type === 'select') {                         // a select contributes its chosen option's values (arrays or expressions)
+        const opt = (p.options || []).find(o => o.value === P[p.id]) || p.options[0];
+        if (opt && opt.values) for (const [k, v] of Object.entries(opt.values)) ctx[k] = evalTable(v, ctx);
+        ctx[p.id] = (p.options || []).indexOf(opt);
+      } else ctx[p.id] = P[p.id];
+    }
+    evalVars(def.vars, ctx);
+    return ctx;
+  }
+  function expandEvents(list, ctx, out, T0) {
+    for (const ev of list || []) {
+      if (ev.if != null && !evalExpr(ev.if, ctx)) continue;
+      if (ev.type === 'repeat') {
+        const count = Math.round(evalExpr(ev.count, ctx));
+        for (let i = 0; i < count; i++) { const c = Object.assign({}, ctx); c[ev.var || 'i'] = i; evalVars(ev.vars, c); expandEvents(ev.events, c, out, T0); }
+        continue;
+      }
+      const e = { type: ev.type, def: ev, ctx };
+      e.t = T0 + evalExpr(ev.t, ctx); e.dur = ev.dur != null ? evalExpr(ev.dur, ctx) : 0; e.t1 = e.t + e.dur;
+      if (ev.type === 'rf') { e.flip = evalExpr(ev.flip, ctx); e.axis = ev.axis || 'x'; e.refocus = !!ev.refocus; e.tc = e.t + e.dur / 2; }
+      else if (ev.type === 'grad') { e.axis = ev.axis; e.area = evalExpr(ev.area, ctx); e.amp = e.dur > 0 ? e.area / e.dur : 0; }
+      else if (ev.type === 'adc') { e.n = Math.round(evalExpr(ev.n, ctx)); e.samples = []; for (let j = 0; j < e.n; j++) e.samples.push(e.t + (j + 0.5) * e.dur / e.n); e.tc = e.t + e.dur / 2; }
+      else if (ev.type === 'spoil') { /* t only */ }
+      else if (ev.type === 'band' || ev.type === 'mark' || ev.type === 'arrow') { if (ev.to != null) e.t1 = T0 + evalExpr(ev.to, ctx); e.label = ev.label; e.style = ev.style; e.level = ev.level || 0; }
+      else throw new Error('unknown event type ' + ev.type);
+      out.push(e);
+    }
+  }
+  function compile(def, P, lang, N) {
+    lang = lang || 'pt'; N = N || 5;
+    const loc = v => (v && typeof v === 'object') ? (v[lang] || v.pt || v.en || '') : (v == null ? '' : String(v));
+    const ctx0 = baseContext(def, P, N);
+    const nShots = Math.max(1, Math.round(evalExpr(def.shots == null ? 1 : def.shots, ctx0)));
+    const TR = evalExpr(def.TR, ctx0);
+    const shots = [], events = [], bands = [], marks = [], arrows = [], adcs = [];
+    for (let n = 0; n < nShots; n++) {
+      const ctx = Object.assign({}, ctx0, { n }); evalVars(def.shotVars, ctx);
+      const T0 = n * TR, out = [];
+      expandEvents(def.events, ctx, out, T0);
+      let tActive = 0;
+      for (const e of out) {
+        if (e.def.desc != null) e.desc = fmtText(loc(e.def.desc), e.ctx);
+        if (e.type === 'grad' && e.def.label != null) e.label = fmtText(loc(e.def.label), e.ctx);
+        if (e.type === 'band') bands.push(Object.assign({ shot: n }, e));
+        else if (e.type === 'mark') { if (n === 0) marks.push(e); }
+        else if (e.type === 'arrow') { if (n === 0) arrows.push(e); }
+        else { e.shot = n; events.push(e); if (e.type !== 'spoil') tActive = Math.max(tActive, e.t1 - T0); if (e.type === 'adc') adcs.push(e); }
+      }
+      shots.push({ n, T0, ctx, tActive, label: def.shotLabel ? fmtText(loc(def.shotLabel), ctx) : '' });
+    }
+    const tActive = Math.max(...shots.map(s => s.tActive));
+    if (TR < tActive) throw new Error('TR shorter than the active part (' + tActive.toFixed(1) + ' ms)');
+    // bands: default one band per shot from its first rf center
+    if (!bands.length) for (const s of shots) { const rf = events.find(e => e.shot === s.n && e.type === 'rf'); bands.push({ shot: s.n, t: rf ? rf.tc : s.T0, label: s.label }); }
+    bands.sort((a, b) => a.t - b.t);
+    for (let i = 0; i < bands.length; i++) { bands[i].t1 = i + 1 < bands.length ? bands[i + 1].t : nShots * TR; if (bands[i].label == null) bands[i].label = shots[bands[i].shot].label; else bands[i].label = fmtText(loc(bands[i].label), bands[i].ctx); }
+    const samples = []; for (const a of adcs) a.samples.forEach((t, j) => samples.push({ t, shot: a.shot, adc: a, j }));
+    samples.sort((a, b) => a.t - b.t);
+    // hard-pulse model: RF must not overlap gradients or readouts
+    for (const r of events) if (r.type === 'rf') for (const e of events) if (e !== r && e.type !== 'spoil' && e.shot === r.shot && e.t < r.t1 - 1e-9 && e.t1 > r.t + 1e-9) throw new Error('RF pulse at ' + r.t.toFixed(1) + ' ms overlaps a ' + e.type + ' event: increase the timing parameters');
+    for (const e of events) if (e.t < 0 || e.t1 > S_tEnd(nShots, TR) + 1e-9) throw new Error('event outside the repetition');
+    return { def, P, N, NPIX: N * N, ctx0, nShots, TR, tActive, tEnd: nShots * TR, shots, events, bands, marks, arrows, adcs, samples, lang };
+  }
+
+  function S_tEnd(n, TR) { return n * TR; }
+
+  /* ---------- simulate ---------- */
+  function overlap(a, b, iv) { return Math.max(0, Math.min(b, iv[1]) - Math.max(a, iv[0])); }
+  function rotY(mx, my, mz, th) { const c = Math.cos(th), s = Math.sin(th); for (let p = 0; p < mx.length; p++) { const x = mx[p], z = mz[p]; mx[p] = x * c + z * s; mz[p] = -x * s + z * c; } }
+  function rotX(mx, my, mz, th) { const c = Math.cos(th), s = Math.sin(th); for (let p = 0; p < mx.length; p++) { const y = my[p], z = mz[p]; my[p] = y * c - z * s; mz[p] = y * s + z * c; } }
+
+  /* relax: {T1, T2} numbers or per-pixel arrays (Infinity disables), dt (fine step, ms), nGap (points per idle gap) */
+  function simulate(S, M0, relax) {
+    const N = S.N, NPIX = S.NPIX, dt = relax.dt || 0.1, nGap = relax.nGap || relax.nTail || 80;
+    if (M0.length !== NPIX) throw new Error('phantom size ' + M0.length + ' does not match N = ' + N);
+    const arr = v => Array.isArray(v) ? v : new Array(NPIX).fill(v);
+    const T1 = arr(relax.T1), T2 = arr(relax.T2);
+    // time grid: fine (dt) inside and around events, coarse (nGap points) across idle gaps, plus the exact sample instants
+    const MARGIN = 1.0, grid = [], busy = [];
+    for (const e of S.events) if (e.type !== 'spoil') busy.push([Math.max(0, e.t - MARGIN), Math.min(S.tEnd, e.t1 + MARGIN)]);
+    busy.sort((a, b) => a[0] - b[0]);
+    const merged = []; for (const iv of busy) { const l = merged[merged.length - 1]; if (l && iv[0] <= l[1] + 1e-9) l[1] = Math.max(l[1], iv[1]); else merged.push([iv[0], iv[1]]); }
+    let cursor = 0;
+    const coarse = (a, b) => { const n = Math.max(1, Math.min(nGap, Math.round((b - a) / dt))); for (let i = 1; i < n; i++) grid.push(a + i * (b - a) / n); };
+    for (const [a, b] of merged) { if (a > cursor) { grid.push(cursor); coarse(cursor, a); } const n = Math.round((b - a) / dt); for (let i = 0; i <= n; i++) grid.push(a + i * dt); cursor = b; }
+    if (cursor < S.tEnd) { grid.push(cursor); coarse(cursor, S.tEnd); }
+    grid.push(S.tEnd); for (const smp of S.samples) grid.push(smp.t); for (const sh of S.shots) grid.push(sh.T0);
+    grid.sort((a, b) => a - b);
+    const times = [], shotOf = [];
+    for (const t of grid) { if (times.length && t - times[times.length - 1] < 1e-7) continue; times.push(t); shotOf.push(Math.min(S.nShots - 1, Math.floor(t / S.TR))); }
+    const Nt = times.length;
+    const Mx = new Float32Array(NPIX * Nt), My = new Float32Array(NPIX * Nt), Mz = new Float32Array(NPIX * Nt);
+    const sRe = new Float32Array(Nt), sIm = new Float32Array(Nt), kxM = new Float32Array(Nt), kyM = new Float32Array(Nt);
+    const mx = new Float64Array(NPIX), my = new Float64Array(NPIX), mz = Float64Array.from(M0);
+    const X = new Float64Array(NPIX), Y = new Float64Array(NPIX);
+    for (let p = 0; p < NPIX; p++) { const q = pixelXY(p, N); X[p] = q.x; Y[p] = q.y; }
+    const rfs = S.events.filter(e => e.type === 'rf'), grads = S.events.filter(e => e.type === 'grad'), spoils = S.events.filter(e => e.type === 'spoil');
+    // sample lookup by grid index (the sample instants are grid points)
+    const sampleIdx = new Map(); let si = 0;
+    for (const smp of S.samples) { while (si < Nt - 1 && times[si] < smp.t - 1e-7) si++; sampleIdx.set(si, (sampleIdx.get(si) || []).concat([smp])); }
+    let kx = 0, ky = 0; const samples = [];
+    // relaxation of the physical state over dtR ms
+    const relaxBy = dtR => { if (dtR <= 0) return; for (let p = 0; p < NPIX; p++) {
+      const e1 = Number.isFinite(T1[p]) ? Math.exp(-dtR / T1[p]) : 1, e2 = Number.isFinite(T2[p]) ? Math.exp(-dtR / T2[p]) : 1;
+      mx[p] *= e2; my[p] *= e2; mz[p] = M0[p] + (mz[p] - M0[p]) * e1; } };
+    const rot = (x, y, z, r, th) => { if (r.axis === 'y') rotY(x, y, z, th); else rotX(x, y, z, th); };
+    const DX = new Float64Array(NPIX), DY = new Float64Array(NPIX), DZ = new Float64Array(NPIX);   // display scratch
+    for (let i = 0; i < Nt; i++) {
+      const t = times[i];
+      if (i > 0) {
+        const a = times[i - 1], bb = t;
+        // 1. relaxation, interrupted only by the instantaneous rotation of a pulse whose center falls in (a, bb]
+        let tPrev = a;
+        const centers = rfs.filter(r => a < r.tc && r.tc <= bb).sort((p, q) => p.tc - q.tc);
+        for (const r of centers) {
+          relaxBy(r.tc - tPrev);
+          rot(mx, my, mz, r, r.flip * Math.PI / 180);
+          if (r.refocus) { kx = -kx; ky = -ky; } else { kx = 0; ky = 0; }   // refocusing: k -> -k; excitation: fresh M_perp at k = 0
+          tPrev = r.tc;
+        }
+        relaxBy(bb - tPrev);
+        // 2. gradients: the k increment of the interval is a phase per pixel
+        let dkx = 0, dky = 0;
+        for (const g of grads) { const o = overlap(a, bb, [g.t, g.t1]); if (o > 0) { if (g.axis === 'x') dkx += g.amp * o; else dky += g.amp * o; } }
+        if (dkx !== 0 || dky !== 0) {
+          kx += dkx; ky += dky;
+          for (let p = 0; p < NPIX; p++) { const ph = 2 * Math.PI * (dkx * X[p] + dky * Y[p]) / N, c = Math.cos(ph), s = Math.sin(ph); const x = mx[p], y = my[p]; mx[p] = x * c + y * s; my[p] = -x * s + y * c; }
+        }
+        // 3. ideal spoiler
+        for (const sp of spoils) if (a < sp.t && bb >= sp.t) { mx.fill(0); my.fill(0); kx = 0; ky = 0; }
+      }
+      // display state: inside a pulse's drawn width, show the rotation in progress
+      let dx = mx, dy = my, dz = mz;
+      for (const r of rfs) if (r.t < t && t < r.t1) {
+        const thNow = r.flip * Math.PI / 180 * (t - r.t) / r.dur, thApplied = t >= r.tc ? r.flip * Math.PI / 180 : 0;
+        DX.set(mx); DY.set(my); DZ.set(mz); rot(DX, DY, DZ, r, thNow - thApplied); dx = DX; dy = DY; dz = DZ;
+      }
+      let re = 0, im = 0;
+      for (let p = 0; p < NPIX; p++) { Mx[i * NPIX + p] = dx[p]; My[i * NPIX + p] = dy[p]; Mz[i * NPIX + p] = dz[p]; re += dx[p]; im += dy[p]; }
+      sRe[i] = re; sIm[i] = im; kxM[i] = kx; kyM[i] = ky;
+      const sl = sampleIdx.get(i);
+      if (sl) for (const smp of sl) samples.push({ idx: i, t: times[i], shot: smp.shot, adc: smp.adc, j: smp.j, kx: Math.round(kx), ky: Math.round(ky), re, im });
+    }
+    const Smax = M0.reduce((s, v) => s + v, 0);
+    return { S, N, NPIX, M0, relax, times, shotOf, Mx, My, Mz, sRe, sIm, kxM, kyM, samples, Smax };
+  }
+  function indexAt(sim, t) {
+    const a = sim.times; let lo = 0, hi = a.length - 1;
+    if (t <= a[0]) return 0; if (t >= a[hi]) return hi;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (a[m] <= t) lo = m; else hi = m; }
+    return (t - a[lo] < a[hi] - t) ? lo : hi;
+  }
+  // which event is active at t (for the status line): rf > adc > grad > spoil-tail > free
+  function segmentAt(S, t) {
+    const at = S.events.filter(e => e.type !== 'spoil' && t >= e.t && t <= e.t1);
+    const rf = at.find(e => e.type === 'rf'); if (rf) return { kind: 'rf', e: rf };
+    const adc = at.find(e => e.type === 'adc'); if (adc) return { kind: 'adc', e: adc, grads: at.filter(e => e.type === 'grad') };
+    const gr = at.filter(e => e.type === 'grad'); if (gr.length) return { kind: 'grad', grads: gr };
+    const shot = S.shots[Math.min(S.nShots - 1, Math.max(0, Math.floor(t / S.TR)))];
+    if (t - shot.T0 > shot.tActive + 1e-9) return { kind: 'tail' };
+    const first = S.events.filter(e => e.shot === shot.n).reduce((m, e) => Math.min(m, e.t), Infinity);
+    return { kind: t < first ? 'rest' : 'free' };
+  }
+  function eventTimes(S) {       // for stepping
+    const ts = new Set([0, S.tEnd]);
+    for (const e of S.events) { ts.add(e.t); if (e.dur > 0) ts.add(e.t1); if (e.tc != null) ts.add(e.tc); }
+    for (const s of S.shots) ts.add(s.T0 + s.tActive);
+    return [...ts].sort((a, b) => a - b);
+  }
+  return { renderPhantom, resampleGrid, pixelXY, range, centric, indexOf, rev, evalExpr, fmtText, paramDefaults, compile, simulate, indexAt, segmentAt, eventTimes };
+});
+</script>
+<script>const TISSUES = {"gm":{"name":{"pt":"subst. cinzenta","en":"gray matter"},"pd":0.85,"T1":1300,"T2":100,"color":"#8f8f8f"},"wm":{"name":{"pt":"subst. branca","en":"white matter"},"pd":0.7,"T1":850,"T2":80,"color":"#9fd0f3"},"csf":{"name":{"pt":"líquor","en":"CSF"},"pd":1.0,"T1":4000,"T2":2000,"color":"#2457c5"},"fat":{"name":{"pt":"gordura","en":"fat"},"pd":0.9,"T1":380,"T2":130,"color":"#f0c244"},"bone":{"name":{"pt":"osso cortical","en":"cortical bone"},"pd":0.0,"T1":1000,"T2":1,"color":"#efe8d6"},"air":{"name":{"pt":"ar","en":"air"},"pd":0.0,"T1":1000,"T2":1,"color":"#000000"},"lesion":{"name":{"pt":"lesão","en":"lesion"},"pd":0.9,"T1":1500,"T2":200,"color":"#d8413c"}};</script>
+<script>
+(function () {
+'use strict';
+const E = window.SeqEngine, $ = id => document.getElementById(id);
+const NS = [3, 5, 7, 9, 11, 13, 15];
+const I18N = {
+  pt: { title: 'Editor de fantomas', lead: 'Pinte um fantoma N×N com os tecidos do dicionário e salve-o como arquivo .json para o simulador. Botão esquerdo pinta o tecido selecionado, direito pinta ar.',
+        save: 'salvar (.json)', copy: 'copiar JSON', load: 'carregar (.json)', name: 'nome', back: 'simulador ↗', fillOff: 'preencher: não', fillOn: 'preencher: sim',
+        undo: 'desfazer', holes: 'tapar buracos', erode: 'erodir', grow: 'crescer', hull: 'casco convexo', core: 'núcleo convexo', open: 'abrir', close: 'fechar', smooth: 'suavizar', neg: 'negativo', clear: 'limpar',
+        status: (t, n, a, N) => `${t}: ${n} pixels · ar: ${a} · N = ${N}`, loaded: 'fantoma carregado: ', bad: 'fantoma inválido: ', copied: 'copiado ✓', copyFail: 'não foi possível copiar: o JSON está na caixa abaixo',
+        help: '<b>Preencher</b>: com "sim", clique esquerdo enche a região conexa de ar sob o cursor com o tecido selecionado; direito apaga (vira ar) a região conexa do tecido selecionado. ' +
+              'As ferramentas agem só sobre o tecido selecionado: ganhos tomam pixels de ar, perdas viram ar. <b>Erodir</b>: pixels com menos de três vizinhos ortogonais do mesmo tecido. <b>Crescer</b>: ar com dois ou mais vizinhos do tecido. ' +
+              '<b>Tapar buracos</b>: ar cercado pelo tecido. <b>Casco convexo</b>: ar dentro do casco. <b>Núcleo convexo</b>: maior subconjunto convexo (remoção de concavidades). <b>Abrir/Fechar</b>: morfologia 3×3. <b>Suavizar</b>: maioria 3×3. <b>Negativo</b>: troca tecido ↔ ar.',
+        lang: 'EN' },
+  en: { title: 'Phantom editor', lead: 'Paint an N×N phantom with the dictionary tissues and save it as a .json file for the simulator. Left button paints the selected tissue, right button paints air.',
+        save: 'save (.json)', copy: 'copy JSON', load: 'load (.json)', name: 'name', back: 'simulator ↗', fillOff: 'fill: off', fillOn: 'fill: on',
+        undo: 'undo', holes: 'fill holes', erode: 'erode', grow: 'grow', hull: 'convex hull', core: 'convex core', open: 'open', close: 'close', smooth: 'smooth', neg: 'negative', clear: 'clear',
+        status: (t, n, a, N) => `${t}: ${n} pixels · air: ${a} · N = ${N}`, loaded: 'phantom loaded: ', bad: 'invalid phantom: ', copied: 'copied ✓', copyFail: 'could not copy: the JSON is in the box below',
+        help: '<b>Fill</b>: when on, a left click fills the connected air region under the cursor with the selected tissue; a right click turns the connected region of the selected tissue into air. ' +
+              'The tools act on the selected tissue only: gains take air pixels, losses become air. <b>Erode</b>: pixels with fewer than three orthogonal neighbors of the same tissue. <b>Grow</b>: air with two or more neighbors of the tissue. ' +
+              '<b>Fill holes</b>: air enclosed by the tissue. <b>Convex hull</b>: air inside the hull. <b>Convex core</b>: largest convex subset (concavity removal). <b>Open/Close</b>: 3×3 morphology. <b>Smooth</b>: 3×3 majority. <b>Negative</b>: swaps tissue ↔ air.',
+        lang: 'PT' },
+};
+const KEYS = Object.keys(TISSUES), AIR = KEYS.indexOf('air');
+if (AIR < 0) throw new Error('the tissue dictionary needs an "air" entry');
+const st = { lang: 'pt', N: 9, grid: null, sel: KEYS.indexOf('gm') >= 0 ? KEYS.indexOf('gm') : 0, fill: false, history: [], drawing: false, value: null, last: null, filename: null };
+const L = () => I18N[st.lang];
+const loc = v => (v && typeof v === 'object') ? (v[st.lang] || v.pt || v.en || '') : (v == null ? '' : String(v));
+const blank = N => Array.from({ length: N }, () => new Array(N).fill(AIR));
+st.grid = blank(st.N);
+
+/* ---------- drawing ---------- */
+const cv = $('grid'), ctx = cv.getContext('2d');
+function draw() {
+  const N = st.N, W = cv.width, cell = W / N;
+  ctx.clearRect(0, 0, W, W);
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) { ctx.fillStyle = TISSUES[KEYS[st.grid[i][j]]].color; ctx.fillRect(j * cell, i * cell, cell, cell); }
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1;
+  for (let k = 0; k <= N; k++) { const x = Math.round(k * cell) + 0.5; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, W); ctx.moveTo(0, x); ctx.lineTo(W, x); ctx.stroke(); }
+  const n = count(st.sel), a = count(AIR);
+  $('status').textContent = L().status(loc(TISSUES[KEYS[st.sel]].name), n, a, N);
+  for (const b of $('palette').children) b.classList.toggle('sel', +b.dataset.i === st.sel);
+}
+function count(v) { let n = 0; for (const row of st.grid) for (const x of row) if (x === v) n++; return n; }
+function cellAt(ev) {
+  const r = cv.getBoundingClientRect(), x = (ev.clientX - r.left) / r.width * st.N, y = (ev.clientY - r.top) / r.height * st.N;
+  const i = Math.floor(y), j = Math.floor(x);
+  return (i >= 0 && i < st.N && j >= 0 && j < st.N) ? [i, j] : null;
+}
+function push() { st.history.push(st.grid.map(r => r.slice())); if (st.history.length > 200) st.history.shift(); }
+
+/* ---------- mouse ---------- */
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('pointerdown', e => {
+  const c = cellAt(e); if (!c) return;
+  const [i, j] = c;
+  if (st.fill) {
+    if (e.button === 0 && st.grid[i][j] === AIR) { push(); fillComponent(i, j, AIR, st.sel); }
+    else if (e.button === 2 && st.grid[i][j] === st.sel) { push(); fillComponent(i, j, st.sel, AIR); }
+    draw(); return;
+  }
+  if (e.button === 0) st.value = st.sel; else if (e.button === 2) st.value = AIR; else return;
+  push(); st.drawing = true; st.last = c; cv.setPointerCapture(e.pointerId);
+  st.grid[i][j] = st.value; draw();
+});
+cv.addEventListener('pointermove', e => {
+  if (!st.drawing) return;
+  const c = cellAt(e); if (!c) return;
+  const [i0, j0] = st.last, [i1, j1] = c, steps = Math.max(Math.abs(i1 - i0), Math.abs(j1 - j0));
+  for (let k = 0; k <= steps; k++) { const t = steps ? k / steps : 1; st.grid[Math.round(i0 + t * (i1 - i0))][Math.round(j0 + t * (j1 - j0))] = st.value; }
+  st.last = c; draw();
+});
+const stop = () => { st.drawing = false; st.last = null; };
+cv.addEventListener('pointerup', stop); cv.addEventListener('pointercancel', stop);
+
+/* ---------- tools: all on the selected tissue's mask; gains from air only, losses to air ---------- */
+const mask = () => st.grid.map(r => r.map(v => v === st.sel));
+function apply(newMask) {
+  for (let i = 0; i < st.N; i++) for (let j = 0; j < st.N; j++) {
+    const old = st.grid[i][j] === st.sel;
+    if (old && !newMask[i][j]) st.grid[i][j] = AIR;
+    else if (!old && newMask[i][j] && st.grid[i][j] === AIR) st.grid[i][j] = st.sel;
+  }
+  draw();
+}
+function neighbors4(m) {   // number of true orthogonal neighbors per pixel
+  const N = st.N, n = Array.from({ length: N }, () => new Array(N).fill(0));
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (m[i][j]) { if (i > 0) n[i - 1][j]++; if (i < N - 1) n[i + 1][j]++; if (j > 0) n[i][j - 1]++; if (j < N - 1) n[i][j + 1]++; }
+  return n;
+}
+function components(pred) {   // 4-connected component labels of the pixels satisfying pred(value); 0 elsewhere
+  const N = st.N, lab = Array.from({ length: N }, () => new Array(N).fill(0)); let next = 0;
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (pred(st.grid[i][j]) && !lab[i][j]) {
+    next++; const q = [[i, j]]; lab[i][j] = next;
+    while (q.length) { const [a, b] = q.pop(); for (const [da, db] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = a + da, y = b + db; if (x >= 0 && x < N && y >= 0 && y < N && pred(st.grid[x][y]) && !lab[x][y]) { lab[x][y] = next; q.push([x, y]); } } }
+  }
+  return lab;
+}
+function fillComponent(i, j, source, target) {
+  const lab = components(v => v === source), L0 = lab[i][j];
+  for (let a = 0; a < st.N; a++) for (let b = 0; b < st.N; b++) if (lab[a][b] === L0) st.grid[a][b] = target;
+}
+function fillHoles(m) {   // true pixels plus every false region not connected to the border
+  const N = st.N, out = m.map(r => r.slice()), seen = Array.from({ length: N }, () => new Array(N).fill(false)), q = [];
+  for (let i = 0; i < N; i++) for (const j of [0, N - 1]) if (!m[i][j] && !seen[i][j]) { seen[i][j] = true; q.push([i, j]); }
+  for (let j = 0; j < N; j++) for (const i of [0, N - 1]) if (!m[i][j] && !seen[i][j]) { seen[i][j] = true; q.push([i, j]); }
+  while (q.length) { const [a, b] = q.pop(); for (const [da, db] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = a + da, y = b + db; if (x >= 0 && x < N && y >= 0 && y < N && !m[x][y] && !seen[x][y]) { seen[x][y] = true; q.push([x, y]); } } }
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (!m[i][j] && !seen[i][j]) out[i][j] = true;
+  return out;
+}
+function morph(m, dilate) {   // 3 x 3 dilation or erosion of a boolean mask
+  const N = st.N, out = Array.from({ length: N }, () => new Array(N).fill(false));
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+    let all = true, any = false;
+    for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const x = i + a, y = j + b, v = (x >= 0 && x < N && y >= 0 && y < N) ? m[x][y] : false; all = all && v; any = any || v; }
+    out[i][j] = dilate ? any : all;
+  }
+  return out;
+}
+function majority(m) {
+  const N = st.N, out = Array.from({ length: N }, () => new Array(N).fill(false));
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+    let n = 0; for (let a = -1; a <= 1; a++) for (let b = -1; b <= 1; b++) { const x = i + a, y = j + b; if (x >= 0 && x < N && y >= 0 && y < N && m[x][y]) n++; }
+    out[i][j] = n >= 5;   // 9 cells, border cells count as false
+  }
+  return out;
+}
+function hullMask(m) {   // pixels inside the convex hull of the true pixels (Andrew's monotone chain, then point-in-polygon on cell centers)
+  const pts = []; for (let i = 0; i < st.N; i++) for (let j = 0; j < st.N; j++) if (m[i][j]) pts.push([j, i]);
+  if (pts.length < 3) return m;
+  pts.sort((p, q) => p[0] - q[0] || p[1] - q[1]);
+  const cross = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lower = []; for (const p of pts) { while (lower.length >= 2 && cross(lower[lower.length - 2], lower[lower.length - 1], p) <= 0) lower.pop(); lower.push(p); }
+  const upper = []; for (const p of pts.slice().reverse()) { while (upper.length >= 2 && cross(upper[upper.length - 2], upper[upper.length - 1], p) <= 0) upper.pop(); upper.push(p); }
+  const hull = lower.slice(0, -1).concat(upper.slice(0, -1));
+  if (hull.length < 3) return m;
+  const inside = (x, y) => { for (let k = 0; k < hull.length; k++) { const a = hull[k], b = hull[(k + 1) % hull.length]; if (cross(a, b, [x, y]) < -1e-9) return false; } return true; };
+  return m.map((row, i) => row.map((v, j) => v || inside(j, i)));
+}
+function convexCore(m, maxIters = 20) {   // Borgefors and Strand's concavity removal (see the Python editor for the full description)
+  const N = st.N; let cur = m.map(r => r.slice());
+  for (let it = 0; it < maxIters; it++) {
+    const h = hullMask(cur); let anyDef = false;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (h[i][j] && !cur[i][j]) anyDef = true;
+    if (!anyDef) break;
+    // geodesic distance of the background from the image border, the object being a wall
+    const dist = Array.from({ length: N }, () => new Array(N).fill(-1)), q = [];
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if ((i === 0 || j === 0 || i === N - 1 || j === N - 1) && !cur[i][j]) { dist[i][j] = 0; q.push([i, j]); }
+    for (let k = 0; k < q.length; k++) { const [a, b] = q[k]; for (const [da, db] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { const x = a + da, y = b + db; if (x >= 0 && x < N && y >= 0 && y < N && !cur[x][y] && dist[x][y] < 0) { dist[x][y] = dist[a][b] + 1; q.push([x, y]); } } }
+    let ci = -1, cj = -1, dmax = 0;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (h[i][j] && !cur[i][j] && dist[i][j] > dmax) { dmax = dist[i][j]; ci = i; cj = j; }
+    if (dmax <= 0) break;
+    const halves = [(i, j) => i > ci - 0.5, (i, j) => i < ci + 0.5, (i, j) => j > cj - 0.5, (i, j) => j < cj + 0.5,
+                    (i, j) => (i - j) > (ci - cj) - 0.5, (i, j) => (i - j) < (ci - cj) + 0.5, (i, j) => (i + j) > (ci + cj) - 0.5, (i, j) => (i + j) < (ci + cj) + 0.5];
+    let best = null, bestN = Infinity;
+    for (const f of halves) { let n = 0; for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (cur[i][j] && f(i, j)) n++; if (n > 0 && n < bestN) { bestN = n; best = f; } }
+    if (!best) break;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) if (cur[i][j] && best(i, j)) cur[i][j] = false;
+  }
+  return cur;
+}
+const TOOLS = [
+  ['toggle', () => { st.fill = !st.fill; $('t_toggle').classList.toggle('on', st.fill); $('t_toggle').textContent = st.fill ? L().fillOn : L().fillOff; }],
+  ['undo', () => { if (st.history.length) { st.grid = st.history.pop(); st.N = st.grid.length; $('nsel').value = String(st.N); draw(); } }],
+  ['holes', () => { push(); apply(fillHoles(mask())); }],
+  ['erode', () => { push(); const m = mask(), n = neighbors4(m); apply(m.map((r, i) => r.map((v, j) => v && n[i][j] >= 3))); }],
+  ['grow', () => { push(); const m = mask(), n = neighbors4(m); apply(m.map((r, i) => r.map((v, j) => v || n[i][j] >= 2))); }],
+  ['hull', () => { push(); apply(hullMask(mask())); }],
+  ['core', () => { push(); apply(convexCore(mask())); }],
+  ['open', () => { push(); apply(morph(morph(mask(), false), true)); }],
+  ['close', () => { push(); apply(morph(morph(mask(), true), false)); }],
+  ['smooth', () => { push(); apply(majority(mask())); }],
+  ['neg', () => { push(); st.grid = st.grid.map(r => r.map(v => v === st.sel ? AIR : (v === AIR ? st.sel : v))); draw(); }],
+  ['clear', () => { push(); st.grid = blank(st.N); draw(); }],
+];
+for (const [key, fn] of TOOLS) { const b = document.createElement('button'); b.id = 't_' + key; b.addEventListener('click', fn); $('tools').appendChild(b); }
+
+/* ---------- palette, size, language ---------- */
+KEYS.forEach((k, i) => {
+  const b = document.createElement('button'); b.dataset.i = i;
+  const sw = document.createElement('i'); sw.style.background = TISSUES[k].color; b.appendChild(sw); b.appendChild(document.createElement('span'));
+  b.addEventListener('click', () => { st.sel = i; draw(); });
+  $('palette').appendChild(b);
+});
+$('nsel').addEventListener('change', e => { push(); st.N = +e.target.value; st.grid = blank(st.N); draw(); });
+function applyLang() {
+  const d = L();
+  document.title = d.title; $('title').innerHTML = `${d.title} <small>MRIsim</small> <span class="ver">v1</span>`; $('lead').textContent = d.lead;
+  $('save').textContent = d.save; $('copy').textContent = d.copy; $('load').textContent = d.load; $('lName').textContent = d.name; $('back').textContent = d.back; $('lang').textContent = d.lang;
+  for (const [key] of TOOLS) $('t_' + key).textContent = key === 'toggle' ? (st.fill ? d.fillOn : d.fillOff) : d[key];
+  for (const b of $('palette').children) b.lastChild.textContent = loc(TISSUES[KEYS[+b.dataset.i]].name);
+  $('help').innerHTML = d.help;
+  document.documentElement.lang = st.lang === 'pt' ? 'pt-BR' : 'en';
+  draw();
+}
+$('lang').addEventListener('click', () => { st.lang = st.lang === 'pt' ? 'en' : 'pt'; applyLang(); });
+
+/* ---------- files ---------- */
+function definition() {
+  const stem = ($('pname').value.trim() || 'fantoma').replace(/\.json$/i, '');
+  return { format: 'didactic-mri-phantom/1', id: stem, name: { pt: stem, en: stem }, background: 'air', grid: { N: st.N, labels: st.grid.map(r => r.map(v => KEYS[v])) } };
+}
+function jsonText() { return JSON.stringify(definition(), null, 1); }
+$('save').addEventListener('click', () => {
+  const txt = jsonText(), a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = definition().id + '.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  $('json').hidden = false; $('json').value = txt;      // also shown, for viewers where downloads are blocked
+});
+$('copy').addEventListener('click', () => {
+  const txt = jsonText(), btn = $('copy');
+  const done = ok => { btn.textContent = ok ? L().copied : L().copyFail; if (!ok) { $('json').hidden = false; $('json').value = txt; $('json').select(); } setTimeout(() => { btn.textContent = L().copy; }, 2200); };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(() => done(true), () => done(false)); else done(false);
+});
+$('load').addEventListener('click', () => $('file').click());
+$('file').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const def = JSON.parse(rd.result);
+      if (!def || typeof def !== 'object' || (!Array.isArray(def.shapes) && !def.grid)) throw new Error('not a phantom file');
+      const N = def.grid ? (def.grid.N || def.grid.labels.length) : st.N;
+      if (!NS.includes(N)) throw new Error('N = ' + N);
+      const ph = E.renderPhantom(def, N, TISSUES);          // shapes rendered at the current N; a grid imposes its own
+      push(); st.N = N; $('nsel').value = String(N);
+      st.grid = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_, j) => KEYS.indexOf(ph.label[i * N + j])));
+      $('pname').value = def.id || file.name.replace(/\.json$/i, '');
+      $('json').hidden = true; draw(); $('msg').classList.remove('err'); $('msg').textContent = L().loaded + loc(def.name || def.id);
+    } catch (ex) { $('msg').classList.add('err'); $('msg').textContent = L().bad + ex.message; }
+  };
+  rd.readAsText(file); e.target.value = '';
+});
+// Back link: the page that linked here (local file, GitHub Pages or artifact), else the hosted simulator.
+if (document.referrer) $('back').href = document.referrer; else if (location.protocol === 'file:') $('back').href = 'sequence_lab_v1.html'; else $('back').href = 'https://w40n5k1.github.io/MRIsim/';
+
+applyLang();
+})();
+</script>
+
+</body></html>

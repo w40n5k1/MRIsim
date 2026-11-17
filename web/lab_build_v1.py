@@ -45,6 +45,10 @@ def standalone(body: str, title: str) -> str:
 
 
 def main():
+    unlisted = sorted(p.name for pattern, listed in (("seq_*.json", SEQUENCE_FILES), ("phantom_*.json", PHANTOM_FILES))
+                      for p in HERE.glob(pattern) if p.name not in listed)
+    if unlisted:
+        print("warning: present but not embedded (add to SEQUENCE_FILES / PHANTOM_FILES):", ", ".join(unlisted))
     body = read("lab_page_template_v1.html")
     body = body.replace("/*__ENGINE__*/", read("seq_engine_v1.js"))
     body = body.replace("/*__DRAW__*/", read("seq_draw_v1.js"))

@@ -6,10 +6,17 @@
    available at that instant (relative to the sum of M0).  This is the model's defining property: the readout
    samples the Fourier transform of the object, and the pulses are instantaneous.
 2. test_matches_javascript: the Python engine and the JavaScript engine of the browser page give the same
-   samples for the same sequence file and phantom (needs node and the JavaScript file next to the package).
+   samples for the same sequence file and phantom.  Needs node and the browser version's folder next to this
+   package (web/ in the repository, MRI_sequencelab_web/ in the working copy); skipped otherwise, and a skip is
+   not a pass: read the summary line.
 3. test_no_spoiler_labels_and_ghost: without the spoiler every k cell is still acquired once (the k label resets
    at each excitation), and the only difference is the ghost of the previous shot's transverse magnetization,
    negligible when TR >> T2 and visible when TR ~ T2.
+4. test_spin_echo_textbook_formula: from the second repetition on, the k = 0 sample of a uniform phantom equals
+   the instantaneous-pulse spin-echo formula.
+5. test_samples_do_not_depend_on_the_time_grid: relaxation, precession and pulses are applied in closed form
+   between grid instants, so the time grid sets what is stored and drawn and not the accuracy; the samples must
+   be the same on any grid.
 """
 import json
 import pathlib
@@ -49,7 +56,8 @@ def test_samples_are_dft(seq, N):
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
 @pytest.mark.parametrize("seq,phantom", [("spin_echo", "square_air"), ("fast_spin_echo", "square"), ("flair", "brain")])
 def test_matches_javascript(seq, phantom):
-    js = next((c for c in (ROOT.parent / "lab" / "seq_engine_v1.js", ROOT.parent / "Sequence Lab" / "seq_engine_v1.js") if c.exists()), None)
+    # the browser version sits next to this package: web/ in the repository, MRI_sequencelab_web/ in the working copy
+    js = next((c for c in (ROOT.parent / d / "seq_engine_v1.js" for d in ("web", "MRI_sequencelab_web", "lab")) if c.exists()), None)
     if js is None:
         pytest.skip("JavaScript engine not found next to the package")
     N = 9
@@ -103,3 +111,18 @@ def test_spin_echo_textbook_formula(tissue, TE, TR):
     assert s00["shot"] >= 1
     exact = t["pd"] * N * N * (1 - 2 * np.exp(-(TR - TE / 2) / t["T1"]) + np.exp(-TR / t["T1"])) * np.exp(-TE / t["T2"])
     assert abs(abs(s00["S"]) - exact) < 1e-9 * exact
+
+
+@pytest.mark.parametrize("seq,phantom", [("spin_echo", "ramp"), ("fast_spin_echo", "square"), ("flair", "brain")])
+def test_samples_do_not_depend_on_the_time_grid(seq, phantom):
+    """The same schedule simulated on the default grid and on two others (a finer one, and one whose step is not
+    commensurate with the event times and whose idle gaps are very coarse) gives the same samples."""
+    N = 7
+    ph = load_phantom(ROOT / "phantoms" / f"{phantom}.json", N, TIS)
+    S = compile_sequence(load_json(ROOT / "sequences" / f"{seq}.json"), None, "pt", N)
+    ref = simulate(S, ph.M0, ph.T1, ph.T2)
+    for dt, n_gap in ((0.05, 200), (0.013, 7)):
+        sim = simulate(S, ph.M0, ph.T1, ph.T2, dt=dt, n_gap=n_gap)
+        assert [(s["kx"], s["ky"]) for s in sim.samples] == [(s["kx"], s["ky"]) for s in ref.samples]
+        worst = max(abs(a["S"] - b["S"]) for a, b in zip(sim.samples, ref.samples))
+        assert worst < 1e-10 * ref.Smax, worst

@@ -1,53 +1,62 @@
-# Sequence Lab (N x N) — sequence simulator with sequences described as text files
+<!-- By Bruno Mota - METAbio -->
+# MRI Sequence Lab — browser version (v1)
 
-Current version: v1. Open `sequence_lab_v1.html` in any browser (self-contained). The heading is a selector between the
-loaded sequences (Spin Echo is the default; Fast Spin Echo and FLAIR are the others). The pixel matrix is N x N with N odd,
-3..15 (selector next to the phantom); Bloch spheres are drawn up to N = 9, transverse arrows only up to N = 15.
-All phantoms are tissue maps (tissues.json: gray matter, white matter, CSF, fat, cortical bone, air, lesion; pd, T1, T2 at
-3 T and a display color): square and letter F 'filled/empty' = GM on air (default, the simplest case); uniform = GM;
-square and letter F = GM on WM; ramp = GM with a proton-density ramp; brain = air,
-scalp fat, skull, CSF, GM, WM, ventricle and one lesion. The pixel pane has three cell modes: intensity (gray = M0),
-intensity + phase (transverse magnetization), tissue (color). The 'global T1/T2' box replaces the tissue values by the
-sliders. The reconstructed image is shown as a magnitude, like a scanner. "load sequence (.json)" adds a sequence
-from disk; "copy sequence JSON" exports the current one.
+Two self-contained pages; open them in any browser, nothing to install.
+
+- `sequence_lab_v1.html`: the simulator. The heading selects the sequence (Spin Echo, Fast Spin Echo, FLAIR, or
+  any sequence file loaded from disk). Below it: the sequence diagram with a time cursor; the N x N pixel array
+  (Bloch spheres up to N = 9, transverse arrows only above that); k-space filling in as the samples are acquired;
+  the inverse Fourier reconstruction, one mode at a time, with the ideal image and the residual; a tab with the
+  equations behind each pane.
+- `phantom_editor_v1.html`: the phantom editor. The simulator links to it and it links back, so keep the two
+  files in the same folder.
+
+Hosted copies: https://w40n5k1.github.io/MRIsim/ and https://w40n5k1.github.io/MRIsim/phantom_editor_v1.html
+(the path is case-sensitive).
+
+Controls of the simulator, row by row: acquisition (play, restart, step by event, speed); the parameters declared
+by the sequence file, then the global T1/T2 override; object (the phantom), N (odd, 3 to 15), linear intensity,
+compress TR, language (pt/en); copy diagram SVG, load sequence (.json), copy sequence JSON, load phantom (.json),
+phantom editor. A painted phantom (one that carries a `grid`) sets N to its own size when chosen or loaded.
 
 ## Files
-- sequence_lab_v1.html        the page (engine, drawer and the two sequences embedded)
-- seq_engine_v1.js            generic engine: compiles a sequence file into a schedule and runs the Bloch simulation (global SeqEngine)
-- seq_draw_v1.js              generic diagram builder (global SeqDraw)
-- seq_spin_echo.json          Spin Echo sequence file
-- seq_fast_spin_echo.json     Fast Spin Echo sequence file
-- seq_flair.json              FLAIR (inversion recovery + fast spin-echo readout) sequence file
-- tissues.json                tissue dictionary (embedded in the page by the build)
-- seq_spin_echo.svg, seq_fast_spin_echo.svg, seq_flair.svg   static diagrams (default parameters)
-- lab_page_template_v1.html   page source with /*__ENGINE__*/, /*__DRAW__*/, /*__SEQS__*/ placeholders
-- lab_build_v1.py             rebuilds the page:  python lab_build_v1.py
-- test_lab_v1.js              check: samples = DFT(M0) x T2 decay for both sequences; regenerates the SVGs:  node test_lab_v1.js
 
-## Sequence file format (didactic-mri-sequence/1)
-Top level: id, name, subtitle, lead, notes (each a string or {pt, en}); relax {T1, T2} (suggested defaults); phantom (suggested);
-params (controls), constants, tables, vars (derived, evaluated in order), shots (repetitions), TR, shotVars,
-shotLabel, envelope (draw e^{-t/T2}), events.
+```
+sequence_lab_v1.html             built page: the simulator          (generated, do not edit)
+phantom_editor_v1.html           built page: the phantom editor     (generated, do not edit)
+lab_page_template_v1.html        source of the simulator: markup, styles, interface code and texts (pt/en)
+phantom_editor_template_v1.html  source of the editor
+seq_engine_v1.js                 engine: expressions, sequence compiler, phantom renderer, Bloch simulation (global SeqEngine)
+seq_draw_v1.js                   sequence diagram as SVG (global SeqDraw)
+seq_*.json                       the three sequence files embedded in the simulator
+phantom_*.json                   the nine phantom files embedded in the simulator
+tissues.json                     tissue dictionary, embedded in both pages
+lab_build_v1.py                  build script
+test_lab_v1.js                   tests (node)
+```
 
-params: {id, label, min, max, step, default, unit, title} slider; {id, type: "checkbox", default, label};
-{id, type: "select", default, label, options: [{value, label, values: {name: value...}}]} — the chosen option's
-`values` become variables (e.g. the ky table "pe").
+`seq_*.json`, `phantom_*.json` and `tissues.json` are copies of the data files of the Python version
+(`sequences/*.json`, `phantoms/*.json`, `tissues.json` there). Change both copies together; the Python tests
+compare them when the two folders sit side by side.
 
-events (per shot; times in ms relative to the shot start; any number may be an expression string):
-- {type: "rf", t, dur, flip, axis: "x"|"y", refocus: true?, desc}   hard pulse; refocus marks k -> -k at its center
-- {type: "grad", axis: "x"|"y", t, dur, area, label?, ghost?, desc}  constant lobe; area in dk = 1/FOV; ghost names a table drawn dashed
-- {type: "adc", t, dur, n, label?, desc}                             n samples at the centers of n equal sub-intervals
-- {type: "spoil", t, if?}                                            ideal spoiler: transverse magnetization zeroed at t
-- {type: "repeat", count, var, vars?, events}                        loop; var and vars visible inside
-- {type: "band", t, label}                                           a background band (and header) starting at t; default: one per shot
-- {type: "arrow", t, to, label, sub?, style: "te"|"tr"|"esp", level: 0|1}   dimension arrow drawn in the first shot
-- {type: "mark", t, label?, style, level?}                           dashed vertical in the first shot
-Any event may carry "if": expression (0 = omitted). Expressions see the params, constants, tables, vars, N and HALF = (N-1)/2, the helpers range(a, b, step) and centric(H),
-the shot index n, loop variables, and Math.*. Labels support a_b, a_{bc}, a^b markup. desc is shown in the status line.
-Expressions are evaluated as JavaScript: load only files from a known source.
+## Build and test
 
-Idle gaps longer than 25 ms (TR tails, the TI wait) are drawn compressed (dashed) when 'compress TR' is on, and the
-simulation uses a coarse time grid across them, so long TI/TR cost nothing.
+```
+python lab_build_v1.py     inlines the engine, the drawer, the tissues, the sequences and the phantoms into the two
+                           templates; writes the two pages, and the same pages without the html/head/body skeleton
+                           (*_body.html, the form a claude.ai artifact takes)
+node test_lab_v1.js        every acquired sample equals the DFT of the object times the decay (spin echo and fast spin
+                           echo, N = 3, 5, 9); the spin-echo signal equals the textbook steady-state formula; the
+                           phantom files render. Also rewrites seq_spin_echo.svg and seq_fast_spin_echo.svg.
+```
 
-Physics: rotating frame, N x N isochromats (one per pixel), per-pixel T1/T2, hard pulses with relaxation suspended, exponential relaxation,
-S = sum(Mx + i My). Samples are the forward DFT of the pixel magnetizations.
+A new sequence or phantom file is embedded only if it is listed in `SEQUENCE_FILES` or `PHANTOM_FILES` in the build
+script (the build warns about files it finds and does not embed). Without rebuilding, any file can be loaded into
+the page with the two load buttons.
+
+## Model and file formats
+
+The physical model and the formats of the sequence, phantom and tissue files are common to both versions and are
+specified once, in the README of the Python version (`python/README.md` in the repository,
+`MRI_sequencelab_py\README.md` in the working copy). In the browser, sequence expressions are evaluated as
+JavaScript: load only files from a source you trust.

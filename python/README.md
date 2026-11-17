@@ -1,3 +1,4 @@
+<!-- By Bruno Mota - METAbio -->
 # mrisim — didactic MRI sequence simulator (Python)
 
 Self-contained Python port of the Sequence Lab page: the same physics, the same sequence files, a tissue
@@ -5,7 +6,7 @@ dictionary and phantom files, with matplotlib views and an animation. Made to be
 
 ```
 tissues.json          tissue dictionary: key -> {name, pd, T1, T2 (ms, 3 T), color}
-phantoms/*.json       tissue maps as shapes on a background (rendered at any odd N)
+phantoms/*.json       tissue maps: shapes on a background (rendered at any odd N) or pixel maps painted in the editor
 sequences/*.json      pulse sequences (spin_echo, fast_spin_echo, flair); same files as the browser version
 mrisim/engine.py      expressions, sequence compiler (JSON -> schedule), Bloch simulation
 mrisim/phantoms.py    tissue dictionary and phantom rendering
@@ -15,10 +16,14 @@ mrisim/viewer.py      interactive window: sequence / phantom / N / parameter sel
                       mode-by-mode Fourier, residual gain
 mrisim/phantom_editor.py  paint a phantom pixel by pixel (python -m mrisim.phantom_editor), save/load phantom files
 mrisim/__main__.py    command line
-tests/test_engine.py  samples = DFT(M0) x decay check; sample-by-sample cross-check with the JavaScript engine
+tests/                samples = DFT(M0) x decay; the textbook spin-echo formula; samples independent of the time grid;
+                      sample-by-sample cross-check with the JavaScript engine; phantom files and editor; data files
+                      identical to the browser version's
 ```
 
-Requirements: Python 3.10+, numpy, matplotlib (pillow for .gif, ffmpeg for .mp4); pytest for the tests.
+Requirements: Python 3.10+, numpy, matplotlib (pillow for .gif, ffmpeg for .mp4); scipy and tkinter for the phantom
+editor only; pytest for the tests (`python -m pytest -q`; the two checks against the browser version need its folder
+next to this one, and the engine cross-check needs node: they are skipped otherwise).
 
 ## Use
 
@@ -45,6 +50,13 @@ lab(N=9, lang="en")                         # viewer with selectors; lab(sequenc
 `sim.samples` is the list of acquired k-space points: `{t, shot, adc, j, idx, kx, ky, S}`; `sim.kspace()` puts
 them on the N x N grid. `rec.partial(n)` is the sum of the first n modes (increasing |k|), for the mode-by-mode
 reconstruction.
+
+`adc` is the acquisition event the sample belongs to: `s["adc"].d` is its entry in the sequence file and
+`s["adc"].ctx` holds the variables at that event, loop variables included. A multi-echo acquisition is therefore
+rebuilt one echo at a time: `reconstruct(sim, samples=[s for s in sim.samples if s["adc"].ctx["i"] == 0])` for the
+first pass of a `repeat` block with loop variable `i`, or select by `s["adc"].d.get("label")`. When a k cell has
+several samples, the reconstruction uses the last one and the ideal image uses the first sample at k = 0 (in the
+browser page too); a cell without a sample counts as zero.
 
 ## Model (common to both versions)
 
@@ -76,8 +88,15 @@ Events, per shot, times in ms relative to the shot start, any number may be an e
 {"type": "band",  "t", "label"}      {"type": "arrow", "t", "to", "label", "sub"?, "style", "level"}      {"type": "mark", "t", "label"?, "style", "level"?}
 ```
 Expressions see params, constants, tables, vars, N, HALF = (N-1)/2, the shot index n, loop variables, and the
-helpers range(a, b, step), centric(H), indexOf(list, v), rev(list), plus min/max/abs/exp/log/sqrt/pi. This subset is
-common to the Python and JavaScript engines; keep to it so files stay portable. Labels support a_b, a_{bc}, a^b.
+helpers range(a, b, step) (inclusive), centric(H), indexOf(list, v), rev(list), plus min, max, abs, floor, ceil, sqrt,
+exp, log, sin, cos and PI. This subset is common to the Python and JavaScript engines; keep to it so files stay
+portable. Not portable: `pi` in lower case (Python only), `%` with a negative operand and `round` at half-integers
+(the two languages disagree), `//`, `and`/`or`/`not`, `&&`/`||`, conditional expressions and method calls; a list
+index must be an integer (`pe[n]`, not `pe[HALF]`): wrap a computed index or count in `floor(...)`, because in
+Python a division gives a float and so does a slider of the viewer once it is moved. For a conditional event use
+its "if" field (any event type). Labels support a_b, a_{bc}, a^b; `${expr}` is replaced by its value in `desc`,
+in `shotLabel` and in the labels of `grad` and `band` events, and printed as written in the labels of `adc`,
+`mark` and `arrow` events.
 Expressions are evaluated as code (Python eval / JavaScript Function): load only files from a known source.
 
 ## Phantom file format (didactic-mri-phantom/1)

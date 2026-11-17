@@ -1,4 +1,5 @@
-# mrisim — a didactic MRI pulse-sequence simulator
+<!-- By Bruno Mota - METAbio -->
+# MRIsim: a didactic MRI pulse-sequence simulator
 
 Teaching material for an undergraduate course on the physics of magnetic resonance imaging (Física Médica, UFRJ).
 An N × N array of isochromats (one per pixel, with per-tissue proton density, T1 and T2) is driven through a pulse
@@ -9,13 +10,13 @@ Two implementations share the same physics, the same tissue dictionary and the s
 
 | | where | run |
 |---|---|---|
-| **Browser page** (no install) | [`web/`](web) — built page: `web/sequence_lab_v1.html` | open the HTML file, or the hosted copy at **https://w40n5k1.github.io/mrisim/** |
+| **Browser page** (no install) | [`web/`](web) (built page: `web/sequence_lab_v1.html`) | open the HTML file, or the hosted copy at **https://w40n5k1.github.io/MRIsim/** |
 | **Phantom editor** (browser) | `web/phantom_editor_v1.html` | linked from the page, or **https://w40n5k1.github.io/MRIsim/phantom_editor_v1.html** |
 | **Python package** | [`python/`](python) | `cd python && pip install -r requirements.txt && python -m mrisim` |
 
 Sequences included: spin echo, fast spin echo (CPMG train, selectable k_y order), FLAIR (inversion + fast spin echo).
 Phantoms: filled/empty squares and letters, uniform, proton-density ramp, a schematic brain (gray and white matter,
-CSF, fat, bone, a lesion) and a painted cartoon face. Both pages load sequence and phantom files (`.json`); phantoms
+CSF, fat, bone, a lesion) and two painted 15 × 15 pictures (a cartoon face, a Mona Lisa). Both pages load sequence and phantom files (`.json`); phantoms
 painted in the editor (browser or Python) carry their own N, which the simulator adopts. Languages: Portuguese and English.
 
 ## Model
@@ -40,10 +41,11 @@ in `tissues.json`. All formats are documented in [`python/README.md`](python/REA
 ## Getting the code
 
 ```
-git clone https://github.com/w40n5k1/mrisim
+git clone https://github.com/w40n5k1/MRIsim
 ```
-or **Code → Download ZIP** on this page. Python 3.10+, numpy and matplotlib for the package; any browser for the page.
+or **Code → Download ZIP** on this page. Python 3.10+, numpy and matplotlib for the package (scipy for its phantom
+editor); any browser for the page. The address of the hosted page is case-sensitive: `MRIsim`, not `mrisim`.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT: see [LICENSE](LICENSE).

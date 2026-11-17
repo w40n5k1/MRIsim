@@ -21,8 +21,16 @@ from .phantoms import load_tissues, load_phantom, render_phantom, Phantom
 from .recon import reconstruct, Recon
 from .plot import plot_diagram, plot_pixels, plot_kspace, plot_image, overview, animate
 from .viewer import lab, view, Lab, Viewer
-from .phantom_editor import PhantomEditor
 
 __all__ = ["compile_sequence", "simulate", "param_defaults", "load_json", "segment_at", "event_times", "pixel_xy",
            "Schedule", "Simulation", "load_tissues", "load_phantom", "render_phantom", "Phantom", "reconstruct", "Recon",
-           "plot_diagram", "plot_pixels", "plot_kspace", "plot_image", "overview", "animate", "lab", "view", "Lab", "Viewer", "PhantomEditor"]
+           "plot_diagram", "plot_pixels", "plot_kspace", "plot_image", "overview", "animate", "lab", "view", "Lab", "Viewer"]
+
+
+def __getattr__(name):
+    """`mrisim.PhantomEditor` is imported on first use: the editor needs scipy and tkinter, the simulator does not,
+    and importing it here would also make `python -m mrisim.phantom_editor` load the module twice."""
+    if name == "PhantomEditor":
+        from .phantom_editor import PhantomEditor
+        return PhantomEditor
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

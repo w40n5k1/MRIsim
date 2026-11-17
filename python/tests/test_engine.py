@@ -1,6 +1,21 @@
-"""Checks: (1) every acquired sample equals DFT(M0) x T2 decay x available Mz for the two spin-echo sequences;
-(2) the Python engine matches the JavaScript engine sample by sample when node is available.  Run: python -m pytest -q"""
-import json, pathlib, subprocess, shutil
+# By Bruno Mota - METAbio
+"""Tests of the simulation engine.  Run from the python/ folder:  python -m pytest -q
+
+1. test_samples_are_dft: for spin echo and fast spin echo, every acquired sample equals the DFT of M0 at its
+   (kx, ky), times the T2 decay accumulated outside the pulses since the excitation, times the longitudinal
+   magnetization available at that excitation (relative to the sum of M0).  This is the model's defining
+   property: the readout samples the Fourier transform of the object.
+2. test_matches_javascript: the Python engine and the JavaScript engine of the browser page give the same
+   samples for the same sequence file and phantom (needs node and the JavaScript file next to the package).
+3. test_no_spoiler_labels_and_ghost: without the spoiler every k cell is still acquired once (the k label resets
+   at each excitation), and the only difference is the ghost of the previous shot's transverse magnetization,
+   negligible when TR >> T2 and visible when TR ~ T2.
+"""
+import json
+import pathlib
+import shutil
+import subprocess
+
 import numpy as np
 import pytest
 from mrisim import load_json, load_tissues, load_phantom, compile_sequence, simulate, pixel_xy

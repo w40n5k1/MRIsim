@@ -1,3 +1,4 @@
+// By Bruno Mota - METAbio
 /* seq_engine_v1.js — generic engine for didactic 2D imaging sequences described as text (JSON).
  *
  * A sequence file declares parameters, derived variables and a list of events per shot (repetition):

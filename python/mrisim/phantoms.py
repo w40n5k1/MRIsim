@@ -1,11 +1,17 @@
-"""Phantoms as tissue maps, rendered at any odd N from a phantom file (format didactic-mri-phantom/1).
+# By Bruno Mota - METAbio
+"""Phantoms: the object being imaged, as a map of tissues on the N x N pixel grid.
 
-A phantom file has a background tissue and a list of shapes painted in order, in normalized coordinates
-x, y in [-1, 1] over the field of view (pixel centers at x = (col - H)/(N/2), y = (H - row)/(N/2)):
-  {"type": "rect", "tissue": "gm", "x": [x0, x1], "y": [y0, y1]}
-  {"type": "disk", "tissue": "csf", "center": [cx, cy], "r": r}     (a disk covers at least its nearest pixel)
-An optional "pd" expression in x, y gives a proton-density factor multiplying the tissue pd (the ramp).
-The tissue dictionary (tissues.json) gives, per tissue key: name, pd, T1, T2 (ms) and a display color.
+A phantom file (format didactic-mri-phantom/1) names a background tissue and lists shapes painted on it in
+order, in coordinates normalized to [-1, 1] over the field of view (pixel centers at x = (col - HALF)/(N/2),
+y = (HALF - row)/(N/2), so the same file renders at any odd N):
+  {"type": "rect", "tissue": "gm",  "x": [x0, x1], "y": [y0, y1]}
+  {"type": "disk", "tissue": "csf", "center": [cx, cy], "r": r}      (a disk covers at least its nearest pixel)
+An optional "pd" expression in x and y gives a proton-density factor multiplying the tissue's pd (used by the
+ramp phantom).
+
+The tissue dictionary (tissues.json) gives, for each tissue key, its name, pd (proton density, 0..1), T1 and T2
+in ms (values at 3 T) and a display color.  render_phantom() turns a phantom file plus the dictionary into the
+per-pixel arrays M0, T1, T2 that the simulation needs, keeping the tissue label of every pixel for display.
 """
 from __future__ import annotations
 
@@ -18,20 +24,31 @@ from .engine import eval_expr, load_json, pixel_xy
 
 @dataclass
 class Phantom:
+    """A phantom rendered at one matrix size.
+
+    defn      the phantom file as a dict
+    N         matrix size
+    tissues   the tissue dictionary used
+    label     tissue key of every pixel (row-major, row 0 at the top)
+    pdf       proton-density factor per pixel (1 unless the file has a "pd" expression)
+    M0        equilibrium magnetization per pixel = tissue pd x pdf
+    T1, T2    relaxation times per pixel (ms)
+    """
     defn: dict
     N: int
     tissues: dict
-    label: list          # tissue key per pixel (row-major, row 0 at the top)
-    pdf: np.ndarray      # proton-density factor per pixel
+    label: list
+    pdf: np.ndarray
     M0: np.ndarray
     T1: np.ndarray
     T2: np.ndarray
 
     def grid(self, arr):
+        """Reshape a per-pixel array to the (N, N) image layout (row 0 at the top)."""
         return np.asarray(arr).reshape(self.N, self.N)
 
     def colors(self) -> np.ndarray:
-        """(N, N, 3) RGB in [0, 1] from the tissue colors."""
+        """(N, N, 3) RGB image in [0, 1] with every pixel in its tissue's display color."""
         out = np.zeros((self.N * self.N, 3))
         for p, k in enumerate(self.label):
             h = self.tissues[k]["color"].lstrip("#")
@@ -40,15 +57,25 @@ class Phantom:
 
 
 def load_tissues(path) -> dict:
+    """Read the tissue dictionary: {key: {name, pd, T1, T2, color}}.
+
+    The file may hold the dictionary directly or under a top-level "tissues" key.
+    """
     d = load_json(path)
     return d["tissues"] if "tissues" in d else d
 
 
 def render_phantom(defn: dict, N: int, tissues: dict) -> Phantom:
+    """Paint the shapes of a phantom definition on an N x N grid and look up the tissue properties.
+
+    A pixel belongs to a rectangle when its center lies inside it (closed interval) and to a disk when its
+    center is within the radius; a disk smaller than a pixel still claims the pixel nearest to its center, so
+    small features (the lesion of the brain phantom) survive at coarse N.  Later shapes overwrite earlier ones.
+    """
     if N % 2 == 0 or N < 1:
         raise ValueError("N must be odd")
     X, Y = pixel_xy(N)
-    xn, yn = X / (N / 2), Y / (N / 2)
+    xn, yn = X / (N / 2), Y / (N / 2)             # pixel centers in normalized coordinates
     label = [defn.get("background", "air")] * (N * N)
     for sh in defn.get("shapes", []):
         if sh["type"] == "rect":
@@ -67,7 +94,8 @@ def render_phantom(defn: dict, N: int, tissues: dict) -> Phantom:
             label[p] = sh["tissue"]
     pdf = np.ones(N * N)
     if defn.get("pd"):
-        pdf = np.array([float(eval_expr(defn["pd"], {"x": float(xn[p]), "y": float(yn[p]), "N": N})) for p in range(N * N)])
+        pdf = np.array([float(eval_expr(defn["pd"], {"x": float(xn[p]), "y": float(yn[p]), "N": N}))
+                        for p in range(N * N)])
     M0 = np.array([tissues[k]["pd"] for k in label]) * pdf
     T1 = np.array([float(tissues[k]["T1"]) for k in label])
     T2 = np.array([float(tissues[k]["T2"]) for k in label])
@@ -75,4 +103,5 @@ def render_phantom(defn: dict, N: int, tissues: dict) -> Phantom:
 
 
 def load_phantom(path, N: int, tissues: dict) -> Phantom:
+    """Read a phantom file and render it at matrix size N with the given tissue dictionary."""
     return render_phantom(load_json(path), N, tissues)

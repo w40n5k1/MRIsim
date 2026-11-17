@@ -1,5 +1,7 @@
-<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sequence Lab 5×5</title></head><body style="margin:0"><title>Sequence Lab 5×5</title>
-<meta name="claude:viewport-fit-sides" content="cover">
+<!doctype html>
+<!-- By Bruno Mota - METAbio -->
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sequence Lab 5×5</title><meta name="claude:viewport-fit-sides" content="cover"></head><body style="margin:0">
+<!-- By Bruno Mota - METAbio -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: one column; the figure is "paper" (fixed light colors, exportable), the two panes below follow the theme. */
@@ -184,7 +186,8 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--line);
   <details><summary id="tEq"></summary><div id="eqs" class="eqs"></div></details>
 </main>
 
-<script>/* seq_engine_v1.js — generic engine for didactic 2D imaging sequences described as text (JSON).
+<script>// By Bruno Mota - METAbio
+/* seq_engine_v1.js — generic engine for didactic 2D imaging sequences described as text (JSON).
  *
  * A sequence file declares parameters, derived variables and a list of events per shot (repetition):
  *   rf    {t, dur, flip (deg), axis 'x'|'y', refocus?}   hard pulse; the angle accrues linearly over dur (visible rotation);
@@ -439,7 +442,8 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--line);
   return { PHANTOM_NAMES, phantom, pixelXY, range, centric, indexOf, rev, evalExpr, fmtText, paramDefaults, compile, simulate, indexAt, segmentAt, eventTimes };
 });
 </script>
-<script>/* seq_draw_v1.js — generic SVG drawing of a compiled sequence schedule (SeqEngine.compile) with its simulation:
+<script>// By Bruno Mota - METAbio
+/* seq_draw_v1.js — generic SVG drawing of a compiled sequence schedule (SeqEngine.compile) with its simulation:
  * rows RF, Gpe (y), Gfe (x), Signal; bands, arrows and marks declared in the sequence file; timeline cursor and
  * reveal clip for animation; optional compression of each shot's tail. Pure string builder (browser and node). */
 (function (root, factory) {
@@ -1222,4 +1226,5 @@ for (const def of SEQUENCES) registerSequence(def);
 refreshTheme(); selectSequence('se'); renderWheel();
 })();
 </script>
+
 </body></html>

@@ -1,3 +1,4 @@
+// By Bruno Mota - METAbio
 /* seq_draw_v1.js — generic SVG drawing of a compiled sequence schedule (SeqEngine.compile) with its simulation:
  * rows RF, Gpe (y), Gfe (x), Signal; bands, arrows and marks declared in the sequence file; timeline cursor and
  * reveal clip for animation; optional compression of each shot's tail. Pure string builder (browser and node). */

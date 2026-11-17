@@ -1,3 +1,4 @@
+// By Bruno Mota - METAbio
 // Checks: for both sequence files, every acquired sample equals DFT(M0) at its (kx,ky) times the T2 decay over the
 // non-pulse time since the excitation, scaled by the longitudinal magnetization available at that excitation.   node test_lab_v1.js
 const E = require('./seq_engine_v1.js'), D = require('./seq_draw_v1.js'), fs = require('fs');

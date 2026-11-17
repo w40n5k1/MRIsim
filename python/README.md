@@ -48,8 +48,9 @@ reconstruction.
 
 Rotating frame at the Larmor frequency; N x N isochromats, one per pixel, at x, y in {-(N-1)/2, ..., (N-1)/2};
 transverse magnetization precesses only under gradients, m -> m exp(-i 2 pi (dkx x + dky y)/N), k in units of
-1/FOV, so the samples are the forward DFT of the pixel magnetizations; hard RF pulses whose angle accrues linearly
-over the pulse width (relaxation suspended meanwhile); exponential relaxation per pixel; signal S = sum of
+1/FOV, so the samples are the forward DFT of the pixel magnetizations; instantaneous hard RF pulses (the whole
+rotation at the pulse center, relaxation never interrupted, so the textbook formulas hold exactly; the drawn width
+only animates the rotation); exponential relaxation per pixel; signal S = sum of
 (Mx + i My). The k label follows the magnetization created by the latest excitation (reset to 0 at its center,
 k -> -k at a refocusing pulse); whatever transverse magnetization survives from earlier shots keeps its own phase and
 enters the samples as a ghost, which is what the spoiler removes. Idle gaps (TR tails, the TI wait) use a coarse time grid and are drawn compressed. Reconstruction:

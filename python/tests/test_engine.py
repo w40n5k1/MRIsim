@@ -2,9 +2,9 @@
 """Tests of the simulation engine.  Run from the python/ folder:  python -m pytest -q
 
 1. test_samples_are_dft: for spin echo and fast spin echo, every acquired sample equals the DFT of M0 at its
-   (kx, ky), times the T2 decay accumulated outside the pulses since the excitation, times the longitudinal
-   magnetization available at that excitation (relative to the sum of M0).  This is the model's defining
-   property: the readout samples the Fourier transform of the object.
+   (kx, ky), times the T2 decay since the center of the excitation pulse, times the longitudinal magnetization
+   available at that instant (relative to the sum of M0).  This is the model's defining property: the readout
+   samples the Fourier transform of the object, and the pulses are instantaneous.
 2. test_matches_javascript: the Python engine and the JavaScript engine of the browser page give the same
    samples for the same sequence file and phantom (needs node and the JavaScript file next to the package).
 3. test_no_spoiler_labels_and_ghost: without the spoiler every k cell is still acquired once (the k label resets
@@ -38,9 +38,9 @@ def test_samples_are_dft(seq, N):
     for s in sim.samples:
         ref = (ph.M0 * np.exp(-2j * np.pi * (s["kx"] * X + s["ky"] * Y) / N)).sum()
         first = next(r for r in rfs if r.shot == s["shot"])
-        tp = sum(r.dur for r in rfs if r is not first and r.shot == s["shot"] and r.t1 <= s["t"])
-        mz_avail = sim.Mz[sim.index_at(first.t)].sum()
-        dec = np.exp(-(s["t"] - first.t1 - tp) / T2) * mz_avail / sim.Smax
+        mz_avail = sim.Mz[sim.index_at(first.t) - 1].sum()        # just before the excitation (grid point before its start)
+        mz_avail = ph.M0.sum() + (mz_avail - ph.M0.sum()) * np.exp(-(first.tc - sim.times[sim.index_at(first.t) - 1]) / T1)
+        dec = np.exp(-(s["t"] - first.tc) / T2) * mz_avail / sim.Smax
         worst = max(worst, abs(s["S"] - ref * dec))
     assert worst < 1e-6, worst
     assert sorted({s["ky"] for s in sim.samples}) == list(range(-(N - 1) // 2, (N - 1) // 2 + 1))
@@ -86,3 +86,20 @@ def test_no_spoiler_labels_and_ghost():
     k1 = simulate(S1, ph.M0, ph.T1, ph.T2).kspace()
     assert not np.isnan(k0).any()
     assert np.abs(k0 - k1).max() > 1e-3        # TR ~ T2: the unspoiled ghost is visible
+
+
+@pytest.mark.parametrize("tissue", ["gm", "wm", "csf"])
+@pytest.mark.parametrize("TE,TR", [(32, 2000), (100, 2000), (22, 100), (200, 300)])
+def test_spin_echo_textbook_formula(tissue, TE, TR):
+    """From the second repetition on (the 90 degree pulse erases the memory of Mz, so the steady state is reached
+    at once), the k = 0 sample of a uniform phantom equals N^2 pd [1 - 2 exp(-(TR - TE/2)/T1) + exp(-TR/T1)]
+    exp(-TE/T2): the instantaneous-pulse spin-echo formula, to machine precision."""
+    N = 5
+    t = TIS[tissue]
+    defn = load_json(ROOT / "sequences" / "spin_echo.json")
+    S = compile_sequence(defn, {"TE": TE, "TR": TR}, "pt", N)
+    sim = simulate(S, np.full(N * N, t["pd"]), t["T1"], t["T2"])
+    s00 = next(s for s in sim.samples if s["kx"] == 0 and s["ky"] == 0)
+    assert s00["shot"] >= 1
+    exact = t["pd"] * N * N * (1 - 2 * np.exp(-(TR - TE / 2) / t["T1"]) + np.exp(-TR / t["T1"])) * np.exp(-TE / t["T2"])
+    assert abs(abs(s00["S"]) - exact) < 1e-9 * exact

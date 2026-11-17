@@ -18,7 +18,8 @@ CSF, fat, bone, a lesion). Languages: Portuguese and English.
 
 ## Model
 
-Rotating frame; hard RF pulses whose flip angle accrues linearly over the pulse (relaxation suspended meanwhile);
+Rotating frame; instantaneous hard RF pulses (the whole rotation at the pulse center, relaxation never interrupted, so
+the textbook signal formulas hold exactly; the width drawn on the diagram only animates the rotation);
 gradients act only through the phase 2π(Δk_x x + Δk_y y)/N, so the acquired samples are exactly the discrete Fourier
 transform of the pixel magnetizations at the sampling instants; exponential T1/T2 relaxation per pixel; ideal
 spoiler as an option. The reconstruction is the inverse DFT grouped in conjugate pairs, so each mode is a real cosine

@@ -2,9 +2,11 @@
 /* seq_engine_v1.js — generic engine for didactic 2D imaging sequences described as text (JSON).
  *
  * A sequence file declares parameters, derived variables and a list of events per shot (repetition):
- *   rf    {t, dur, flip (deg), axis 'x'|'y', refocus?}   hard pulse; the angle accrues linearly over dur (visible rotation);
- *                                                        relaxation is suspended during the pulse; refocus: k -> -k at the center,
- *                                                        otherwise (excitation) the k label resets to 0 at the center
+ *   rf    {t, dur, flip (deg), axis 'x'|'y', refocus?}   instantaneous pulse: the whole rotation is applied at the center t + dur/2
+ *                                                        and relaxation is never interrupted, so the textbook formulas hold exactly;
+ *                                                        dur is only the drawn width, inside which the displayed magnetization is the
+ *                                                        physical state turned by the angle accrued so far (visible rotation);
+ *                                                        refocus: k -> -k at the center, otherwise (excitation) the k label resets to 0
  *   grad  {axis 'x'|'y', t, dur, area}                   constant lobe; area in dk = 1/FOV units (k moved by the lobe)
  *   adc   {t, dur, n}                                    readout window; n samples at the centers of n equal sub-intervals
  *   spoil {t}                                            ideal spoiler: transverse magnetization zeroed at t
@@ -14,7 +16,7 @@
  * a sequence file is code you choose to run, like a notebook cell.
  *
  * Physics (same didactic model as the hand-written programs): N x N isochromats (N odd) at x,y in {-(N-1)/2..(N-1)/2}, rotating frame
- * (precession only under gradients: m -> m exp(-i 2 pi (dkx x + dky y)/5)), hard pulses, exponential relaxation,
+ * (precession only under gradients: m -> m exp(-i 2 pi (dkx x + dky y)/N)), instantaneous hard pulses, exponential relaxation,
  * signal S = sum of (Mx + i My) over the pixels. Samples are the forward DFT of the pixel magnetizations.
  * Units: ms, dk.
  */
@@ -197,30 +199,44 @@
     const sampleIdx = new Map(); let si = 0;
     for (const smp of S.samples) { while (si < Nt - 1 && times[si] < smp.t - 1e-7) si++; sampleIdx.set(si, (sampleIdx.get(si) || []).concat([smp])); }
     let kx = 0, ky = 0; const samples = [];
+    // relaxation of the physical state over dtR ms
+    const relaxBy = dtR => { if (dtR <= 0) return; for (let p = 0; p < NPIX; p++) {
+      const e1 = Number.isFinite(T1[p]) ? Math.exp(-dtR / T1[p]) : 1, e2 = Number.isFinite(T2[p]) ? Math.exp(-dtR / T2[p]) : 1;
+      mx[p] *= e2; my[p] *= e2; mz[p] = M0[p] + (mz[p] - M0[p]) * e1; } };
+    const rot = (x, y, z, r, th) => { if (r.axis === 'y') rotY(x, y, z, th); else rotX(x, y, z, th); };
+    const DX = new Float64Array(NPIX), DY = new Float64Array(NPIX), DZ = new Float64Array(NPIX);   // display scratch
     for (let i = 0; i < Nt; i++) {
+      const t = times[i];
       if (i > 0) {
-        const a = times[i - 1], bb = times[i], d = bb - a;
-        let oP = 0; for (const r of rfs) oP += overlap(a, bb, [r.t, r.t1]);
-        const dR = d - oP;
-        if (dR > 0) for (let p = 0; p < NPIX; p++) {
-          const e1 = Number.isFinite(T1[p]) ? Math.exp(-dR / T1[p]) : 1, e2 = Number.isFinite(T2[p]) ? Math.exp(-dR / T2[p]) : 1;
-          mx[p] *= e2; my[p] *= e2; mz[p] = M0[p] + (mz[p] - M0[p]) * e1;
+        const a = times[i - 1], bb = t;
+        // 1. relaxation, interrupted only by the instantaneous rotation of a pulse whose center falls in (a, bb]
+        let tPrev = a;
+        const centers = rfs.filter(r => a < r.tc && r.tc <= bb).sort((p, q) => p.tc - q.tc);
+        for (const r of centers) {
+          relaxBy(r.tc - tPrev);
+          rot(mx, my, mz, r, r.flip * Math.PI / 180);
+          if (r.refocus) { kx = -kx; ky = -ky; } else { kx = 0; ky = 0; }   // refocusing: k -> -k; excitation: fresh M_perp at k = 0
+          tPrev = r.tc;
         }
-        for (const r of rfs) {
-          const o = overlap(a, bb, [r.t, r.t1]);
-          if (o > 0) { const th = r.flip * Math.PI / 180 * o / r.dur; if (r.axis === 'y') rotY(mx, my, mz, th); else rotX(mx, my, mz, th); }
-          if (a < r.tc && bb >= r.tc) { if (r.refocus) { kx = -kx; ky = -ky; } else { kx = 0; ky = 0; } }   // refocusing: k -> -k; excitation: fresh M_perp at k = 0
-        }
+        relaxBy(bb - tPrev);
+        // 2. gradients: the k increment of the interval is a phase per pixel
         let dkx = 0, dky = 0;
         for (const g of grads) { const o = overlap(a, bb, [g.t, g.t1]); if (o > 0) { if (g.axis === 'x') dkx += g.amp * o; else dky += g.amp * o; } }
         if (dkx !== 0 || dky !== 0) {
           kx += dkx; ky += dky;
           for (let p = 0; p < NPIX; p++) { const ph = 2 * Math.PI * (dkx * X[p] + dky * Y[p]) / N, c = Math.cos(ph), s = Math.sin(ph); const x = mx[p], y = my[p]; mx[p] = x * c + y * s; my[p] = -x * s + y * c; }
         }
+        // 3. ideal spoiler
         for (const sp of spoils) if (a < sp.t && bb >= sp.t) { mx.fill(0); my.fill(0); kx = 0; ky = 0; }
       }
+      // display state: inside a pulse's drawn width, show the rotation in progress
+      let dx = mx, dy = my, dz = mz;
+      for (const r of rfs) if (r.t < t && t < r.t1) {
+        const thNow = r.flip * Math.PI / 180 * (t - r.t) / r.dur, thApplied = t >= r.tc ? r.flip * Math.PI / 180 : 0;
+        DX.set(mx); DY.set(my); DZ.set(mz); rot(DX, DY, DZ, r, thNow - thApplied); dx = DX; dy = DY; dz = DZ;
+      }
       let re = 0, im = 0;
-      for (let p = 0; p < NPIX; p++) { Mx[i * NPIX + p] = mx[p]; My[i * NPIX + p] = my[p]; Mz[i * NPIX + p] = mz[p]; re += mx[p]; im += my[p]; }
+      for (let p = 0; p < NPIX; p++) { Mx[i * NPIX + p] = dx[p]; My[i * NPIX + p] = dy[p]; Mz[i * NPIX + p] = dz[p]; re += dx[p]; im += dy[p]; }
       sRe[i] = re; sIm[i] = im; kxM[i] = kx; kyM[i] = ky;
       const sl = sampleIdx.get(i);
       if (sl) for (const smp of sl) samples.push({ idx: i, t: times[i], shot: smp.shot, adc: smp.adc, j: smp.j, kx: Math.round(kx), ky: Math.round(ky), re, im });

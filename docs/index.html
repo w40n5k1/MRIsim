@@ -190,9 +190,11 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--line);
 /* seq_engine_v1.js — generic engine for didactic 2D imaging sequences described as text (JSON).
  *
  * A sequence file declares parameters, derived variables and a list of events per shot (repetition):
- *   rf    {t, dur, flip (deg), axis 'x'|'y', refocus?}   hard pulse; the angle accrues linearly over dur (visible rotation);
- *                                                        relaxation is suspended during the pulse; refocus: k -> -k at the center,
- *                                                        otherwise (excitation) the k label resets to 0 at the center
+ *   rf    {t, dur, flip (deg), axis 'x'|'y', refocus?}   instantaneous pulse: the whole rotation is applied at the center t + dur/2
+ *                                                        and relaxation is never interrupted, so the textbook formulas hold exactly;
+ *                                                        dur is only the drawn width, inside which the displayed magnetization is the
+ *                                                        physical state turned by the angle accrued so far (visible rotation);
+ *                                                        refocus: k -> -k at the center, otherwise (excitation) the k label resets to 0
  *   grad  {axis 'x'|'y', t, dur, area}                   constant lobe; area in dk = 1/FOV units (k moved by the lobe)
  *   adc   {t, dur, n}                                    readout window; n samples at the centers of n equal sub-intervals
  *   spoil {t}                                            ideal spoiler: transverse magnetization zeroed at t
@@ -202,7 +204,7 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--line);
  * a sequence file is code you choose to run, like a notebook cell.
  *
  * Physics (same didactic model as the hand-written programs): N x N isochromats (N odd) at x,y in {-(N-1)/2..(N-1)/2}, rotating frame
- * (precession only under gradients: m -> m exp(-i 2 pi (dkx x + dky y)/5)), hard pulses, exponential relaxation,
+ * (precession only under gradients: m -> m exp(-i 2 pi (dkx x + dky y)/N)), instantaneous hard pulses, exponential relaxation,
  * signal S = sum of (Mx + i My) over the pixels. Samples are the forward DFT of the pixel magnetizations.
  * Units: ms, dk.
  */
@@ -385,30 +387,44 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--line);
     const sampleIdx = new Map(); let si = 0;
     for (const smp of S.samples) { while (si < Nt - 1 && times[si] < smp.t - 1e-7) si++; sampleIdx.set(si, (sampleIdx.get(si) || []).concat([smp])); }
     let kx = 0, ky = 0; const samples = [];
+    // relaxation of the physical state over dtR ms
+    const relaxBy = dtR => { if (dtR <= 0) return; for (let p = 0; p < NPIX; p++) {
+      const e1 = Number.isFinite(T1[p]) ? Math.exp(-dtR / T1[p]) : 1, e2 = Number.isFinite(T2[p]) ? Math.exp(-dtR / T2[p]) : 1;
+      mx[p] *= e2; my[p] *= e2; mz[p] = M0[p] + (mz[p] - M0[p]) * e1; } };
+    const rot = (x, y, z, r, th) => { if (r.axis === 'y') rotY(x, y, z, th); else rotX(x, y, z, th); };
+    const DX = new Float64Array(NPIX), DY = new Float64Array(NPIX), DZ = new Float64Array(NPIX);   // display scratch
     for (let i = 0; i < Nt; i++) {
+      const t = times[i];
       if (i > 0) {
-        const a = times[i - 1], bb = times[i], d = bb - a;
-        let oP = 0; for (const r of rfs) oP += overlap(a, bb, [r.t, r.t1]);
-        const dR = d - oP;
-        if (dR > 0) for (let p = 0; p < NPIX; p++) {
-          const e1 = Number.isFinite(T1[p]) ? Math.exp(-dR / T1[p]) : 1, e2 = Number.isFinite(T2[p]) ? Math.exp(-dR / T2[p]) : 1;
-          mx[p] *= e2; my[p] *= e2; mz[p] = M0[p] + (mz[p] - M0[p]) * e1;
+        const a = times[i - 1], bb = t;
+        // 1. relaxation, interrupted only by the instantaneous rotation of a pulse whose center falls in (a, bb]
+        let tPrev = a;
+        const centers = rfs.filter(r => a < r.tc && r.tc <= bb).sort((p, q) => p.tc - q.tc);
+        for (const r of centers) {
+          relaxBy(r.tc - tPrev);
+          rot(mx, my, mz, r, r.flip * Math.PI / 180);
+          if (r.refocus) { kx = -kx; ky = -ky; } else { kx = 0; ky = 0; }   // refocusing: k -> -k; excitation: fresh M_perp at k = 0
+          tPrev = r.tc;
         }
-        for (const r of rfs) {
-          const o = overlap(a, bb, [r.t, r.t1]);
-          if (o > 0) { const th = r.flip * Math.PI / 180 * o / r.dur; if (r.axis === 'y') rotY(mx, my, mz, th); else rotX(mx, my, mz, th); }
-          if (a < r.tc && bb >= r.tc) { if (r.refocus) { kx = -kx; ky = -ky; } else { kx = 0; ky = 0; } }   // refocusing: k -> -k; excitation: fresh M_perp at k = 0
-        }
+        relaxBy(bb - tPrev);
+        // 2. gradients: the k increment of the interval is a phase per pixel
         let dkx = 0, dky = 0;
         for (const g of grads) { const o = overlap(a, bb, [g.t, g.t1]); if (o > 0) { if (g.axis === 'x') dkx += g.amp * o; else dky += g.amp * o; } }
         if (dkx !== 0 || dky !== 0) {
           kx += dkx; ky += dky;
           for (let p = 0; p < NPIX; p++) { const ph = 2 * Math.PI * (dkx * X[p] + dky * Y[p]) / N, c = Math.cos(ph), s = Math.sin(ph); const x = mx[p], y = my[p]; mx[p] = x * c + y * s; my[p] = -x * s + y * c; }
         }
+        // 3. ideal spoiler
         for (const sp of spoils) if (a < sp.t && bb >= sp.t) { mx.fill(0); my.fill(0); kx = 0; ky = 0; }
       }
+      // display state: inside a pulse's drawn width, show the rotation in progress
+      let dx = mx, dy = my, dz = mz;
+      for (const r of rfs) if (r.t < t && t < r.t1) {
+        const thNow = r.flip * Math.PI / 180 * (t - r.t) / r.dur, thApplied = t >= r.tc ? r.flip * Math.PI / 180 : 0;
+        DX.set(mx); DY.set(my); DZ.set(mz); rot(DX, DY, DZ, r, thNow - thApplied); dx = DX; dy = DY; dz = DZ;
+      }
       let re = 0, im = 0;
-      for (let p = 0; p < NPIX; p++) { Mx[i * NPIX + p] = mx[p]; My[i * NPIX + p] = my[p]; Mz[i * NPIX + p] = mz[p]; re += mx[p]; im += my[p]; }
+      for (let p = 0; p < NPIX; p++) { Mx[i * NPIX + p] = dx[p]; My[i * NPIX + p] = dy[p]; Mz[i * NPIX + p] = dz[p]; re += dx[p]; im += dy[p]; }
       sRe[i] = re; sIm[i] = im; kxM[i] = kx; kyM[i] = ky;
       const sl = sampleIdx.get(i);
       if (sl) for (const smp of sl) samples.push({ idx: i, t: times[i], shot: smp.shot, adc: smp.adc, j: smp.j, kx: Math.round(kx), ky: Math.round(ky), re, im });
@@ -634,7 +650,7 @@ const I18N = {
       ]],
       ['Matriz de pixels', [
         'Equações de Bloch no referencial girante, pixel p em (x<sub>p</sub>, y<sub>p</sub>), com <span class="m">M<sub>⊥</sub> = M<sub>x</sub> + i M<sub>y</sub></span>: <span class="m">dM<sub>⊥</sub>/dt = −i·2π(G<sub>x</sub>x<sub>p</sub> + G<sub>y</sub>y<sub>p</sub>)(γ/2π)·M<sub>⊥</sub> − M<sub>⊥</sub>/T2</span>, <span class="m">dM<sub>z</sub>/dt = (M<sub>0</sub> − M<sub>z</sub>)/T1</span>. Num passo em que k avança (Δk<sub>x</sub>, Δk<sub>y</sub>): <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub> e<sup>−iΔφ</sup>, Δφ = 2π(Δk<sub>x</sub>x<sub>p</sub> + Δk<sub>y</sub>y<sub>p</sub>)/N</span>; relaxação: <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub>e<sup>−Δt/T2</sup>, M<sub>z</sub> → M<sub>0</sub> + (M<sub>z</sub> − M<sub>0</sub>)e<sup>−Δt/T1</sup></span>.',
-        'Pulsos (duros): rotação de ângulo θ em torno do eixo do pulso; 90° em y: <span class="m">(M<sub>x</sub>, M<sub>z</sub>) → (M<sub>z</sub>, −M<sub>x</sub>)</span> (+z → +x); 180° de inversão em repouso: <span class="m">M<sub>z</sub> → −M<sub>z</sub></span>, e depois <span class="m">M<sub>z</sub>(t) = M<sub>0</sub>(1 − 2e<sup>−t/T1</sup>)</span>, nulo em t = T1·ln 2; 180° em x: <span class="m">(M<sub>y</sub>, M<sub>z</sub>) → (−M<sub>y</sub>, −M<sub>z</sub>)</span>, isto é, <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub><sup>*</sup></span>. O ângulo cresce linearmente ao longo da largura do pulso, sem relaxação nem gradientes nesse intervalo.',
+        'Pulsos (duros): rotação de ângulo θ em torno do eixo do pulso; 90° em y: <span class="m">(M<sub>x</sub>, M<sub>z</sub>) → (M<sub>z</sub>, −M<sub>x</sub>)</span> (+z → +x); 180° de inversão em repouso: <span class="m">M<sub>z</sub> → −M<sub>z</sub></span>, e depois <span class="m">M<sub>z</sub>(t) = M<sub>0</sub>(1 − 2e<sup>−t/T1</sup>)</span>, nulo em t = T1·ln 2; 180° em x: <span class="m">(M<sub>y</sub>, M<sub>z</sub>) → (−M<sub>y</sub>, −M<sub>z</sub>)</span>, isto é, <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub><sup>*</sup></span>. O pulso é instantâneo: a rotação inteira é aplicada no seu centro, e a relaxação segue sem interrupção antes e depois; a largura desenhada só anima a rotação (dentro dela, o que se vê é o estado físico girado pelo ângulo já acumulado).',
         'Cor da célula (modo intensidade + fase): matiz = <span class="m">arg M<sub>⊥</sub></span>, intensidade = <span class="m">√(|M<sub>⊥</sub>|/M<sub>0,max</sub>)</span> (ou linear). Modo intensidade: cinza = M<sub>0</sub>.'
       ]],
       ['Espaço k', [
@@ -652,7 +668,7 @@ const I18N = {
     ],
     notes: 'Modelo: o que é física e o que é simplificação didática',
     noteList: [
-      'Modelo (comum a todas as sequências): referencial girante em ω₀, Δφ = 2π(Δkₓ·x + Δk_y·y)/N com x, y ∈ {−(N−1)/2,…,(N−1)/2} (N ímpar, seletor no painel), m → m·e^{−iΔφ}: as amostras são a DFT direta das magnetizações dos pixels. Pulsos duros, com o ângulo crescendo linearmente ao longo da largura só para a rotação ser visível; relaxação suspensa durante os pulsos. Relaxação: M⊥ ∝ e^{−t/T2}, M_z → M₀ + (M_z − M₀)e^{−t/T1}; cursores em ∞ desligam. Sinal S = Σ(Mₓ + iM_y) sobre os N² pixels (não normalizado). Até N = 9 cada pixel mostra a esfera de Bloch; acima, só a cor da célula e, até N = 15, a seta de M⊥. A seleção de fatia é tomada como já feita.',
+      'Modelo (comum a todas as sequências): referencial girante em ω₀, Δφ = 2π(Δkₓ·x + Δk_y·y)/N com x, y ∈ {−(N−1)/2,…,(N−1)/2} (N ímpar, seletor no painel), m → m·e^{−iΔφ}: as amostras são a DFT direta das magnetizações dos pixels. Pulsos instantâneos: toda a rotação é aplicada no centro do pulso e a relaxação nunca é interrompida, de modo que as fórmulas de livro-texto valem exatamente (spin echo: S ∝ M₀[1 − 2e^{−(T_R−T_E/2)/T1} + e^{−T_R/T1}]e^{−T_E/T2} a partir da segunda repetição); a largura desenhada é só a animação dessa rotação. Relaxação: M⊥ ∝ e^{−t/T2}, M_z → M₀ + (M_z − M₀)e^{−t/T1}; cursores em ∞ desligam. Sinal S = Σ(Mₓ + iM_y) sobre os N² pixels (não normalizado). Até N = 9 cada pixel mostra a esfera de Bloch; acima, só a cor da célula e, até N = 15, a seta de M⊥. A seleção de fatia é tomada como já feita.',
       'Objetos são mapas de tecidos: cada pixel tem um rótulo (subst. cinzenta, subst. branca, líquor, gordura, osso cortical, ar, lesão) que fixa sua densidade de prótons, T1 e T2 (dicionário tissues.json, valores aproximados a 3 T), mais um fator opcional de densidade (a rampa). Os objetos "cheio/vazio" são subst. cinzenta sobre ar: o caso mais simples, insensível a TE e TR, em que a intensidade do sinal se lê diretamente da soma das setas transversais dos pixels cheios. Os objetos "SC sobre SB" têm fundo com sinal, e aí o contraste entre figura e fundo depende da sequência (TE, TR, TI). A caixa "T1/T2 globais" substitui os valores dos tecidos pelos cursores, para experimentos como T2 = ∞.',
       'Espaço k: cada célula é um intervalo de amostragem (dwell); a amostra fica no centro e a varredura de leitura cobre as células inteiras (−N/2 a +N/2). A cor é a fase de S e a intensidade |S|, na mesma codificação da bola da legenda. Em pulsos de refocalização ideais k → −k.',
       'Fourier reversa: imagem(r) = (1/N²) Σ_k S(k) e^{+2πi k·r/N}; cada par conjugado {k, −k} dá uma onda real A cos(2π k·r/N + φ); (N²+1)/2 modos (DC + (N²−1)/2 pares) em ordem crescente de |k|. Resíduo = imagem/c − imagem ideal (|M⊥| de cada pixel no eco central), com c por mínimos quadrados: mede o filtro do espaço k, não o contraste.',
@@ -690,7 +706,7 @@ const I18N = {
       ]],
       ['Pixel array', [
         'Bloch equations in the rotating frame, pixel p at (x<sub>p</sub>, y<sub>p</sub>), with <span class="m">M<sub>⊥</sub> = M<sub>x</sub> + i M<sub>y</sub></span>: <span class="m">dM<sub>⊥</sub>/dt = −i·2π(G<sub>x</sub>x<sub>p</sub> + G<sub>y</sub>y<sub>p</sub>)(γ/2π)·M<sub>⊥</sub> − M<sub>⊥</sub>/T2</span>, <span class="m">dM<sub>z</sub>/dt = (M<sub>0</sub> − M<sub>z</sub>)/T1</span>. In a step where k advances by (Δk<sub>x</sub>, Δk<sub>y</sub>): <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub> e<sup>−iΔφ</sup>, Δφ = 2π(Δk<sub>x</sub>x<sub>p</sub> + Δk<sub>y</sub>y<sub>p</sub>)/N</span>; relaxation: <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub>e<sup>−Δt/T2</sup>, M<sub>z</sub> → M<sub>0</sub> + (M<sub>z</sub> − M<sub>0</sub>)e<sup>−Δt/T1</sup></span>.',
-        'Pulses (hard): rotation by θ about the pulse axis; 90° about y: <span class="m">(M<sub>x</sub>, M<sub>z</sub>) → (M<sub>z</sub>, −M<sub>x</sub>)</span> (+z → +x); inversion 180° at rest: <span class="m">M<sub>z</sub> → −M<sub>z</sub></span>, then <span class="m">M<sub>z</sub>(t) = M<sub>0</sub>(1 − 2e<sup>−t/T1</sup>)</span>, zero at t = T1·ln 2; 180° about x: <span class="m">(M<sub>y</sub>, M<sub>z</sub>) → (−M<sub>y</sub>, −M<sub>z</sub>)</span>, i.e. <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub><sup>*</sup></span>. The angle grows linearly across the pulse width, with no relaxation or gradients in that interval.',
+        'Pulses (hard): rotation by θ about the pulse axis; 90° about y: <span class="m">(M<sub>x</sub>, M<sub>z</sub>) → (M<sub>z</sub>, −M<sub>x</sub>)</span> (+z → +x); inversion 180° at rest: <span class="m">M<sub>z</sub> → −M<sub>z</sub></span>, then <span class="m">M<sub>z</sub>(t) = M<sub>0</sub>(1 − 2e<sup>−t/T1</sup>)</span>, zero at t = T1·ln 2; 180° about x: <span class="m">(M<sub>y</sub>, M<sub>z</sub>) → (−M<sub>y</sub>, −M<sub>z</sub>)</span>, i.e. <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub><sup>*</sup></span>. The pulse is instantaneous: the whole rotation is applied at its center and relaxation runs uninterrupted before and after it; the drawn width only animates the rotation (inside it, what is shown is the physical state turned by the angle accrued so far).',
         'Cell color (intensity + phase mode): hue = <span class="m">arg M<sub>⊥</sub></span>, intensity = <span class="m">√(|M<sub>⊥</sub>|/M<sub>0,max</sub>)</span> (or linear). Intensity mode: gray = M<sub>0</sub>.'
       ]],
       ['k-space', [
@@ -708,7 +724,7 @@ const I18N = {
     ],
     notes: 'Model: what is physics and what is didactic simplification',
     noteList: [
-      'Model (common to all sequences): rotating frame at ω₀, Δφ = 2π(Δkₓ·x + Δk_y·y)/N with x, y ∈ {−(N−1)/2,…,(N−1)/2} (N odd, selector in the panel), m → m·e^{−iΔφ}: the samples are the forward DFT of the pixel magnetizations. Hard pulses, with the angle growing linearly across the width only so the rotation can be watched; relaxation suspended during pulses. Relaxation: M⊥ ∝ e^{−t/T2}, M_z → M₀ + (M_z − M₀)e^{−t/T1}; sliders at ∞ switch them off. Signal S = Σ(Mₓ + iM_y) over the N² pixels (unnormalized). Up to N = 9 each pixel shows its Bloch sphere; above that only the cell color and, up to N = 15, the M⊥ arrow. Slice selection is taken as already done.',
+      'Model (common to all sequences): rotating frame at ω₀, Δφ = 2π(Δkₓ·x + Δk_y·y)/N with x, y ∈ {−(N−1)/2,…,(N−1)/2} (N odd, selector in the panel), m → m·e^{−iΔφ}: the samples are the forward DFT of the pixel magnetizations. Instantaneous hard pulses: the whole rotation is applied at the pulse center and relaxation is never interrupted, so the textbook formulas hold exactly (spin echo: S ∝ M₀[1 − 2e^{−(T_R−T_E/2)/T1} + e^{−T_R/T1}]e^{−T_E/T2} from the second repetition on); the drawn width is only the animation of that rotation. Relaxation: M⊥ ∝ e^{−t/T2}, M_z → M₀ + (M_z − M₀)e^{−t/T1}; sliders at ∞ switch them off. Signal S = Σ(Mₓ + iM_y) over the N² pixels (unnormalized). Up to N = 9 each pixel shows its Bloch sphere; above that only the cell color and, up to N = 15, the M⊥ arrow. Slice selection is taken as already done.',
       'Phantoms are tissue maps: each pixel has a label (gray matter, white matter, CSF, fat, cortical bone, air, lesion) that fixes its proton density, T1 and T2 (dictionary tissues.json, approximate 3 T values), plus an optional density factor (the ramp). The "filled/empty" phantoms are gray matter on air: the simplest case, insensitive to TE and TR, where the signal intensity can be read directly as the sum of the transverse arrows of the filled pixels. The "GM on WM" phantoms have a background with signal, and then figure/background contrast depends on the sequence (TE, TR, TI). The "global T1/T2" box replaces the tissue values by the sliders, for experiments such as T2 = ∞.',
       'k-space: each cell is one sampling (dwell) interval; the sample sits at its center and the readout sweep covers whole cells (−N/2 to +N/2). Color is the phase of S and intensity |S|, with the same encoding as the legend ball. At ideal refocusing pulses k → −k.',
       'Inverse Fourier: image(r) = (1/N²) Σ_k S(k) e^{+2πi k·r/N}; each conjugate pair {k, −k} gives one real wave A cos(2π k·r/N + φ); (N²+1)/2 modes (DC + (N²−1)/2 pairs) in increasing |k|. Residual = image/c − ideal image (each pixel\'s |M⊥| at the central echo), with c by least squares: it measures the k-space filter, not the contrast.',

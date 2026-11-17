@@ -12,11 +12,15 @@ Physical model (identical to the browser version, so both read the same sequence
   transverse magnetization m = Mx + i My of the pixel at (x, y) by exp(-i dphi), dphi = 2 pi (dkx x + dky y)/N.
   Consequently the acquired samples are exactly the forward discrete Fourier transform of the pixel
   magnetizations at the sampling instants.
-* RF pulses are hard pulses: the flip angle accrues linearly over the pulse width (only so the rotation can be
-  watched in the animation); relaxation is suspended during a pulse.  A pulse flagged "refocus" maps the k label
-  to -k at its center; any other pulse (an excitation) resets the k label to 0 at its center, because the
-  transverse magnetization it creates is not yet encoded.  Transverse magnetization left over from earlier
-  shots keeps its own accumulated phase and enters the samples as a ghost, which is what a spoiler removes.
+* RF pulses are instantaneous: the whole rotation is applied at the pulse center, and relaxation runs
+  uninterrupted before and after it, so the textbook formulas (e.g. the spin-echo signal
+  M0 [1 - 2 exp(-(TR - TE/2)/T1) + exp(-TR/T1)] exp(-TE/T2)) hold exactly.  The pulse width drawn on the
+  diagram is only an animation of that rotation: inside the width, the displayed magnetization is the physical
+  state turned by the angle accrued so far, so the arrows can be watched turning.  A pulse flagged "refocus"
+  maps the k label to -k at its center; any other pulse (an excitation) resets the k label to 0 at its center,
+  because the transverse magnetization it creates is not yet encoded.  Transverse magnetization left over from
+  earlier shots keeps its own accumulated phase and enters the samples as a ghost, which is what a spoiler
+  removes.
 * Relaxation is exponential, per pixel: Mxy -> Mxy exp(-dt/T2), Mz -> M0 + (Mz - M0) exp(-dt/T1).
   T1 or T2 = inf switches that relaxation off.
 * The signal is S(t) = sum over pixels of (Mx + i My), unnormalized (its maximum is the sum of M0).
@@ -431,6 +435,18 @@ def _overlap(a, b, t0, t1):
     return max(0.0, min(b, t1) - max(a, t0))
 
 
+def _rotate(mx, my, mz, th, axis):
+    """Right-handed rotation of the magnetization by th radians about the x or y axis; returns new arrays.
+
+    About y: (0, 0, 1) -> (sin th, 0, cos th), so a 90 degree pulse about y takes +z to +x.
+    About x: (0, 0, 1) -> (0, -sin th, cos th).
+    """
+    c, s_ = math.cos(th), math.sin(th)
+    if axis == "y":
+        return mx * c + mz * s_, my.copy(), -mx * s_ + mz * c
+    return mx.copy(), my * c - mz * s_, my * s_ + mz * c
+
+
 def _time_grid(S: Schedule, dt: float, n_gap: int) -> np.ndarray:
     """Adaptive time grid: step dt inside and 1 ms around every event, at most n_gap points across each idle gap
     (TR tails, inversion delays), plus the exact sampling instants and the start of every shot."""
@@ -479,11 +495,13 @@ def simulate(S: Schedule, M0, T1, T2, dt: float = 0.1, n_gap: int = 80) -> Simul
     n_gap        maximum number of steps across an idle gap
 
     The state starts at equilibrium (Mz = M0, Mxy = 0).  From one grid instant to the next, in this order:
-    relaxation over the part of the interval not covered by an RF pulse; the rotation of every RF pulse
-    overlapping the interval (angle proportional to the overlap); the precession from the gradient areas
-    accumulated in the interval, applied as a phase per pixel; the spoiler, if its instant falls in the
-    interval.  The k label is updated alongside: refocusing pulse -> -k, excitation -> 0, gradients -> k + dk.
-    Each sample stores the signal and the k label at its instant.
+    relaxation up to the center of any RF pulse inside the interval, the full rotation of that pulse, relaxation
+    over the rest of the interval; the precession from the gradient areas accumulated in the interval, applied
+    as a phase per pixel; the spoiler, if its instant falls in the interval.  The k label is updated alongside:
+    refocusing pulse -> -k, excitation -> 0, gradients -> k + dk.  Each sample stores the signal and the k label
+    at its instant.  The stored magnetization (Mx, My, Mz and the signal) is the display state: inside the
+    drawn width of a pulse it is the physical state turned by the angle accrued so far, so that the rotation
+    can be watched; everywhere else it is the physical state itself.
     """
     N, NPIX = S.N, S.npix
     M0 = np.asarray(M0, float).reshape(NPIX)
@@ -510,37 +528,38 @@ def simulate(S: Schedule, M0, T1, T2, dt: float = 0.1, n_gap: int = 80) -> Simul
     sig = np.zeros(Nt, complex)
     kxM = np.zeros(Nt)
     kyM = np.zeros(Nt)
-    # Current state: equilibrium.
+    # Current physical state: equilibrium.
     mx = np.zeros(NPIX)
     my = np.zeros(NPIX)
     mz = M0.copy()
     e1_fin, e2_fin = np.isfinite(T1), np.isfinite(T2)
     kx = ky = 0.0
     samples = []
+
+    def relax(dt):
+        """Exponential relaxation of the physical state over dt ms."""
+        nonlocal mx, my, mz
+        if dt <= 0:
+            return
+        e2 = np.where(e2_fin, np.exp(-dt / np.where(e2_fin, T2, 1.0)), 1.0)
+        e1 = np.where(e1_fin, np.exp(-dt / np.where(e1_fin, T1, 1.0)), 1.0)
+        mx = mx * e2
+        my = my * e2
+        mz = M0 + (mz - M0) * e1
+
     for i in range(Nt):
+        t = times[i]
         if i > 0:
-            a, b = times[i - 1], times[i]
-            # 1. Relaxation, only over the part of the interval outside RF pulses.
-            dR = (b - a) - sum(_overlap(a, b, r.t, r.t1) for r in rfs)
-            if dR > 0:
-                e2 = np.where(e2_fin, np.exp(-dR / np.where(e2_fin, T2, 1.0)), 1.0)
-                e1 = np.where(e1_fin, np.exp(-dR / np.where(e1_fin, T1, 1.0)), 1.0)
-                mx *= e2
-                my *= e2
-                mz = M0 + (mz - M0) * e1
-            # 2. RF pulses: rotation by the fraction of the flip angle that falls in the interval.
-            for r in rfs:
-                o = _overlap(a, b, r.t, r.t1)
-                if o > 0:
-                    th = math.radians(r.flip) * o / r.dur
-                    c, s_ = math.cos(th), math.sin(th)
-                    if r.axis == "y":      # right-handed rotation about y: (0, 0, 1) -> (sin th, 0, cos th)
-                        mx, mz = mx * c + mz * s_, -mx * s_ + mz * c
-                    else:                  # right-handed rotation about x: (0, 0, 1) -> (0, -sin th, cos th)
-                        my, mz = my * c - mz * s_, my * s_ + mz * c
-                if a < r.tc <= b:          # pulse center: refocusing maps k -> -k, an excitation creates fresh M_perp at k = 0
-                    kx, ky = (-kx, -ky) if r.refocus else (0.0, 0.0)
-            # 3. Gradients: the k increment of the interval is a phase per pixel (precession in the rotating frame).
+            a, b = times[i - 1], t
+            # 1. Relaxation, interrupted only by the instantaneous rotation of a pulse whose center falls in (a, b].
+            t_prev = a
+            for r in sorted((r for r in rfs if a < r.tc <= b), key=lambda r: r.tc):
+                relax(r.tc - t_prev)
+                mx, my, mz = _rotate(mx, my, mz, math.radians(r.flip), r.axis)
+                kx, ky = (-kx, -ky) if r.refocus else (0.0, 0.0)   # refocusing: k -> -k; excitation: fresh M_perp at k = 0
+                t_prev = r.tc
+            relax(b - t_prev)
+            # 2. Gradients: the k increment of the interval is a phase per pixel (precession in the rotating frame).
             dkx = dky = 0.0
             for g in grads:
                 o = _overlap(a, b, g.t, g.t1)
@@ -555,16 +574,23 @@ def simulate(S: Schedule, M0, T1, T2, dt: float = 0.1, n_gap: int = 80) -> Simul
                 ph = 2 * np.pi * (dkx * X + dky * Y) / N
                 c, s_ = np.cos(ph), np.sin(ph)
                 mx, my = mx * c + my * s_, -mx * s_ + my * c    # m -> m exp(-i ph)
-            # 4. Ideal spoiler: transverse magnetization and k label zeroed.
+            # 3. Ideal spoiler: transverse magnetization and k label zeroed.
             for sp in spoils:
                 if a < sp.t <= b:
                     mx[:] = 0
                     my[:] = 0
                     kx = ky = 0.0
-        Mx[i] = mx
-        My[i] = my
-        Mz[i] = mz
-        sig[i] = mx.sum() + 1j * my.sum()
+        # Display state: inside a pulse's drawn width, show the rotation in progress.
+        dx, dy, dz = mx, my, mz
+        for r in rfs:
+            if r.t < t < r.t1:
+                th_now = math.radians(r.flip) * (t - r.t) / r.dur
+                th_applied = math.radians(r.flip) if t >= r.tc else 0.0
+                dx, dy, dz = _rotate(mx, my, mz, th_now - th_applied, r.axis)
+        Mx[i] = dx
+        My[i] = dy
+        Mz[i] = dz
+        sig[i] = dx.sum() + 1j * dy.sum()
         kxM[i] = kx
         kyM[i] = ky
         for smp in sample_idx.get(i, []):

@@ -10,11 +10,13 @@ Two implementations share the same physics, the same tissue dictionary and the s
 | | where | run |
 |---|---|---|
 | **Browser page** (no install) | [`web/`](web) — built page: `web/sequence_lab_v1.html` | open the HTML file, or the hosted copy at **https://w40n5k1.github.io/mrisim/** |
+| **Phantom editor** (browser) | `web/phantom_editor_v1.html` | linked from the page, or **https://w40n5k1.github.io/MRIsim/phantom_editor_v1.html** |
 | **Python package** | [`python/`](python) | `cd python && pip install -r requirements.txt && python -m mrisim` |
 
 Sequences included: spin echo, fast spin echo (CPMG train, selectable k_y order), FLAIR (inversion + fast spin echo).
-Phantoms: filled/empty squares and letters, uniform, proton-density ramp, and a schematic brain (gray and white matter,
-CSF, fat, bone, a lesion). Languages: Portuguese and English.
+Phantoms: filled/empty squares and letters, uniform, proton-density ramp, a schematic brain (gray and white matter,
+CSF, fat, bone, a lesion) and a painted cartoon face. Both pages load sequence and phantom files (`.json`); phantoms
+painted in the editor (browser or Python) carry their own N, which the simulator adopts. Languages: Portuguese and English.
 
 ## Model
 
@@ -31,8 +33,9 @@ one isochromat per pixel): the point is to see the mechanism, not to match a sca
 A sequence is a JSON file (`python/sequences/*.json`, identical to the ones embedded in the page): parameters that
 become controls, timing expressions, and events (`rf`, `grad`, `adc`, `spoil`, `repeat`, plus annotation events for
 bands, arrows and marks). The browser page loads such a file with the *carregar sequência* button; the Python
-viewer lists every file in its `sequences/` folder. Phantoms are JSON shape lists in `python/phantoms/`, tissues a
-table in `tissues.json`. Both formats are documented in [`python/README.md`](python/README.md).
+viewer lists every file in its `sequences/` folder. Phantoms are JSON files in `python/phantoms/` (the same files are
+embedded in the page as `web/phantom_*.json`): shape lists, or pixel maps painted in the editor; tissues are a table
+in `tissues.json`. All formats are documented in [`python/README.md`](python/README.md).
 
 ## Getting the code
 

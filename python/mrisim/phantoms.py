@@ -7,7 +7,11 @@ y = (HALF - row)/(N/2), so the same file renders at any odd N):
   {"type": "rect", "tissue": "gm",  "x": [x0, x1], "y": [y0, y1]}
   {"type": "disk", "tissue": "csf", "center": [cx, cy], "r": r}      (a disk covers at least its nearest pixel)
 An optional "pd" expression in x and y gives a proton-density factor multiplying the tissue's pd (used by the
-ramp phantom).
+ramp phantom).  A phantom painted pixel by pixel (the phantom editor's output) carries a "grid" instead of, or
+before, the shapes:
+  "grid": {"N": 9, "labels": [["air", "air", ...], ...]}      rows from the top, N x N tissue keys
+The grid is rendered at any odd N by nearest-neighbor resampling of the pixel centers; shapes, if present, are
+painted on top of it.
 
 The tissue dictionary (tissues.json) gives, for each tissue key, its name, pd (proton density, 0..1), T1 and T2
 in ms (values at 3 T) and a display color.  render_phantom() turns a phantom file plus the dictionary into the
@@ -77,6 +81,8 @@ def render_phantom(defn: dict, N: int, tissues: dict) -> Phantom:
     X, Y = pixel_xy(N)
     xn, yn = X / (N / 2), Y / (N / 2)             # pixel centers in normalized coordinates
     label = [defn.get("background", "air")] * (N * N)
+    if defn.get("grid"):
+        label = _resample_grid(defn["grid"], N)
     for sh in defn.get("shapes", []):
         if sh["type"] == "rect":
             (x0, x1), (y0, y1) = sh["x"], sh["y"]
@@ -100,6 +106,20 @@ def render_phantom(defn: dict, N: int, tissues: dict) -> Phantom:
     T1 = np.array([float(tissues[k]["T1"]) for k in label])
     T2 = np.array([float(tissues[k]["T2"]) for k in label])
     return Phantom(defn, N, tissues, label, pdf, M0, T1, T2)
+
+
+def _resample_grid(grid: dict, N: int) -> list:
+    """Tissue keys of an N x N grid taken from a painted grid of size n (nearest pixel center, in normalized
+    coordinates); the identity when n == N."""
+    rows = grid["labels"]
+    n = int(grid.get("N", len(rows)))
+    if len(rows) != n or any(len(r) != n for r in rows):
+        raise ValueError("phantom grid is not N x N")
+    if n == N:
+        return [k for row in rows for k in row]
+    src = np.rint((np.arange(N) - (N - 1) / 2) * n / N + (n - 1) / 2).astype(int)   # nearest source index per target index
+    src = np.clip(src, 0, n - 1)
+    return [rows[src[i]][src[j]] for i in range(N) for j in range(N)]
 
 
 def load_phantom(path, N: int, tissues: dict) -> Phantom:

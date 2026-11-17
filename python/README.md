@@ -13,6 +13,7 @@ mrisim/recon.py       inverse DFT by conjugate-pair modes, ideal contrast image,
 mrisim/plot.py        diagram, pixel array, k-space, image panels, static overview figure, animation to file
 mrisim/viewer.py      interactive window: sequence / phantom / N / parameter selectors, time slider and play, cell mode,
                       mode-by-mode Fourier, residual gain
+mrisim/phantom_editor.py  paint a phantom pixel by pixel (python -m mrisim.phantom_editor), save/load phantom files
 mrisim/__main__.py    command line
 tests/test_engine.py  samples = DFT(M0) x decay check; sample-by-sample cross-check with the JavaScript engine
 ```
@@ -26,6 +27,7 @@ python -m mrisim                                                   # interactive
 python -m mrisim --static                                          # static overview instead
 python -m mrisim --sequence sequences/flair.json --phantom phantoms/brain.json -N 9 --param TI=600 --out flair.png
 python -m mrisim --sequence sequences/fast_spin_echo.json --param order=centric --animate fse.gif
+python -m mrisim.phantom_editor [phantoms/brain.json] -N 9         # phantom editor; save into phantoms/ to see it in the viewer
 ```
 
 ```python
@@ -87,10 +89,19 @@ Expressions are evaluated as code (Python eval / JavaScript Function): load only
 ```
 Coordinates are normalized to [-1, 1] over the field of view (pixel centers at x = (col - H)/(N/2)); shapes are
 painted in order; a disk covers at least its nearest pixel; `pd` is an optional proton-density factor in x, y.
+A phantom painted in the editor carries a pixel map instead (shapes, if any, go on top of it):
+```
+{"id", "name", "background": "air", "grid": {"N": 9, "labels": [["air", "gm", ...], ...]}}
+```
+rendered at any odd N by nearest-neighbor resampling of the pixel centers.
+
+The editor (`python -m mrisim.phantom_editor`) shows the dictionary's tissues as colored buttons; left-drag paints the
+selected tissue, right-drag paints air; the tools (fill, erode, grow, fill holes, convex hull, convex core, open, close,
+smooth, negative, undo) act on the selected tissue only. N is odd, 3 to 15.
 
 ## Extending
 
 A new sequence is a new JSON file (copy one and edit); a new tissue is a line in tissues.json; a new phantom is a
-list of shapes. For physics beyond the model (several isochromats per pixel for T2* and imperfect refocusing,
+list of shapes, or a grid painted in the editor. For physics beyond the model (several isochromats per pixel for T2* and imperfect refocusing,
 slice profiles, off-resonance, noise) edit `simulate` in engine.py: it is a plain loop over the time grid with
 numpy arrays over pixels.

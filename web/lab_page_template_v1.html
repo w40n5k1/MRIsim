@@ -39,6 +39,7 @@ main { max-width: 1450px; margin: 0 auto; display: grid; gap: 14px; }
 .figure svg .trh.on { font-weight: 700; }
 .controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
 .controls .grp { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.controls .grp.row { flex-basis: 100%; }   /* a group that takes a whole line */
 .controls label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--fg); }
 .controls label .v { font-family: var(--mono); font-variant-numeric: tabular-nums; min-width: 5.2ch; text-align: right; color: var(--accent); }
 button { font: inherit; font-weight: 500; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 5px 11px; cursor: pointer; }
@@ -121,17 +122,19 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--line);
       <label>T1 <input type="range" id="T1" min="10" max="1010" step="10" value="80"><span class="v" id="vT1"></span></label>
       <label>T2 <input type="range" id="T2" min="5" max="505" step="5" value="60"><span class="v" id="vT2"></span></label>
     </div>
-    <div class="grp">
+    <div class="grp row">
       <label><span id="lPhantom"></span> <select id="phantom"></select></label>
       <label>N <select id="nsel"><option>3</option><option selected>5</option><option>7</option><option>9</option><option>11</option><option>13</option><option>15</option></select></label>
       <label><input type="checkbox" id="linear"> <span id="lLinear"></span></label>
       <label><input type="checkbox" id="compress" checked> <span id="lCompress"></span></label>
+      <button id="lang">EN</button>
+    </div>
+    <div class="grp row">
       <button id="copysvg"></button>
       <button id="loadseq"></button><input type="file" id="seqfile" accept=".json,application/json">
       <button id="copyseq"></button>
       <button id="loadph"></button><input type="file" id="phfile" accept=".json,application/json">
       <a id="editorLink" class="btnlink" href="phantom_editor_v1.html" target="_blank" rel="noopener"></a>
-      <button id="lang">EN</button>
     </div>
     <div class="err" id="err"></div>
     <div class="grp" hidden>

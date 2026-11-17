@@ -44,7 +44,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent      # folder holding sequ
 ALIEN = "#39ff14"                                          # frame color of the current-mode panel
 NS = (3, 5, 7, 9, 11, 13, 15)                              # matrix sizes offered
 # Didactic order of the built-in sequences and phantoms in the selectors; other files follow alphabetically.
-ORDER = ["se", "fse", "flair", "squareAir", "letterFAir", "uniform", "square", "letterF", "ramp", "brain", "face"]
+ORDER = ["se", "fse", "flair", "squareAir", "letterFAir", "uniform", "square", "letterF", "ramp", "brain", "face", "monalisa"]
 
 # Interface texts.
 TXT = {

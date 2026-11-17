@@ -19,7 +19,7 @@ import pathlib
 HERE = pathlib.Path(__file__).parent
 SEQUENCE_FILES = ["seq_spin_echo.json", "seq_fast_spin_echo.json", "seq_flair.json"]
 PHANTOM_FILES = ["phantom_square_air.json", "phantom_letter_f_air.json", "phantom_uniform.json", "phantom_square.json",
-                 "phantom_letter_f.json", "phantom_ramp.json", "phantom_brain.json", "phantom_face.json"]      # menu order
+                 "phantom_letter_f.json", "phantom_ramp.json", "phantom_brain.json", "phantom_face.json", "phantom_monalisa.json"]      # menu order
 
 
 def read(name):

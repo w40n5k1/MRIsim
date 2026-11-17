@@ -1,0 +1,1224 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sequence Lab 5×5</title></head><body style="margin:0"><title>Sequence Lab 5×5</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column; the figure is "paper" (fixed light colors, exportable), the two panes below follow the theme. */
+:root {
+  --bg: #f1f4f8; --fg: #1b2330; --muted: #5c687a; --panel: #ffffff; --panel2: #e9edf3; --line: #cfd7e2;
+  --accent: #1d4f91; --segOff: #7383a0; --cursor: #c2185b; --vecM: #d62828; --vecC: #1d5fd1; --sphere: #8b5cf6; --equator: #7c3aed;
+  --font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f141b; --fg: #e5eaf1; --muted: #9aa6b8; --panel: #171e28; --panel2: #202a37; --line: #2d3947;
+  --accent: #3f74c4; --segOff: #4b5a70; --cursor: #ff5c9a; --vecM: #ff5a5a; --vecC: #6b9bff; --sphere: #a78bfa; --equator: #b79cff; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f141b; --fg: #e5eaf1; --muted: #9aa6b8; --panel: #171e28; --panel2: #202a37; --line: #2d3947;
+  --accent: #3f74c4; --segOff: #4b5a70; --cursor: #ff5c9a; --vecM: #ff5a5a; --vecC: #6b9bff; --sphere: #a78bfa; --equator: #b79cff; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px 32px; }
+* { box-sizing: border-box; }
+h1 { font-size: 1.45rem; font-weight: 700; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 small { font-weight: 400; color: var(--muted); font-size: 0.95rem; }
+.h1sel { font: inherit; font-size: 1.45rem; font-weight: 700; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+.h1sel:hover { border-color: var(--accent); }
+#seqParams { display: contents; }
+.controls .err { color: #c62828; font-family: var(--mono); font-size: 0.85rem; }
+.legend canvas { width: 160px; height: 160px; flex: 0 0 160px; }
+input[type=file] { display: none; }
+h1 .ver { font-family: var(--mono); font-weight: 500; font-size: 0.75rem; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; vertical-align: middle; }
+h2 { font-size: 0.92rem; font-weight: 600; margin: 0 0 6px; }
+p { margin: 0; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; max-width: 1450px; margin: 0 auto 12px; }
+.lead { color: var(--muted); max-width: 70ch; }
+main { max-width: 1450px; margin: 0 auto; display: grid; gap: 14px; }
+.figure { background: #fff; border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; padding: 6px 4px; }
+.figure svg { display: block; width: 100%; height: auto; min-width: 980px; cursor: crosshair; touch-action: none; }
+.figure svg .trh { font-weight: 400; }
+.figure svg .trh.on { font-weight: 700; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.controls .grp { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.controls label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--fg); }
+.controls label .v { font-family: var(--mono); font-variant-numeric: tabular-nums; min-width: 5.2ch; text-align: right; color: var(--accent); }
+button { font: inherit; font-weight: 500; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 5px 11px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: #fff; border-color: transparent; min-width: 6.5em; }
+input[type=range] { width: 110px; accent-color: var(--accent); }
+select { font: inherit; font-size: 1rem; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; }
+option { font: inherit; font-size: 1rem; font-weight: 400; color: var(--fg); background: var(--panel2); padding: 4px 6px; }   /* the drop-down list does not inherit the select's font reliably */
+.h1sel option { font-size: 1.05rem; font-weight: 500; }
+/* custom drop-downs: the native list is rendered by the OS and may ignore page fonts and DPI; the select stays in the
+   DOM (state, change events) and a button + in-page list replace its popup */
+.dd { position: relative; display: inline-block; }
+.dd > select { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.ddbtn { font: inherit; font-size: 1.05rem; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 4px 28px 4px 8px; cursor: pointer; text-align: left; white-space: nowrap; position: relative; }
+.ddbtn::after { content: ""; position: absolute; right: 10px; top: 50%; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-70%) rotate(45deg); }
+.ddbtn:hover { border-color: var(--accent); }
+.dd.h1 .ddbtn { font-size: 1.45rem; font-weight: 700; background: var(--panel); border-radius: 6px; padding: 2px 34px 2px 10px; }
+.ddlist { position: absolute; top: calc(100% + 3px); left: 0; z-index: 60; min-width: 100%; background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,.25); padding: 4px; display: none; max-height: 60vh; overflow: auto; font-size: 1.1rem; font-weight: 400; line-height: 1.35; }
+.ddlist.open { display: block; }
+.ddlist [role=option] { padding: 7px 14px; white-space: nowrap; cursor: pointer; border-radius: 4px; color: var(--fg); }
+.ddlist [role=option]:hover, .ddlist [role=option].cur { background: var(--accent); color: #fff; }
+.status { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); padding: 0 4px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+#status { height: 2.8em; overflow: hidden; }   /* always exactly two lines: the panes below never shift */
+.status b { color: var(--fg); font-weight: 500; }
+.controls .fstatus { padding: 0; flex: 1 1 220px; }
+.panes { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 14px; }
+.pane { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px 12px; min-width: 0; }
+.pane h2 { line-height: 1.3; min-height: 1.3em; margin: 0 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pane .foot { display: grid; gap: 8px; margin-top: 10px; }
+.gainrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+[hidden] { display: none !important; }
+canvas { display: block; width: 100%; max-width: 100%; }
+.seg { display: inline-flex; border-radius: 6px; overflow: hidden; font-size: 0.82rem; justify-self: start; }
+.seg label { padding: 4px 11px; cursor: pointer; color: #fff; background: var(--segOff); display: inline-flex; align-items: center; gap: 5px; }
+.seg label.on { background: var(--accent); font-weight: 600; }
+.seg label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg input { position: absolute; opacity: 0; width: 0; height: 0; }
+.pane .sub { color: var(--muted); font-size: 0.8rem; }
+.tissues { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tissues span { display: inline-flex; align-items: center; gap: 5px; }
+.tissues i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); }
+.legend { display: flex; align-items: center; gap: 10px; margin-top: 8px; color: var(--muted); font-size: 0.8rem; }
+.legend .samp { font-family: var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; }
+details { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; }
+summary { cursor: pointer; font-weight: 600; }
+details ul { margin: 6px 0 2px; padding-left: 1.2em; max-width: 90ch; color: var(--fg); }
+details li { margin: 3px 0; }
+.eqs { display: grid; gap: 10px; margin: 8px 0 4px; max-width: 95ch; }
+.eqs h3 { font-size: 0.9rem; margin: 0 0 3px; }
+.eqs p { margin: 2px 0; line-height: 1.6; }
+.eqs .m { font-family: 'IBM Plex Serif', 'Times New Roman', serif; font-style: italic; }
+.eqs .m sub, .eqs .m sup { font-style: normal; font-size: 0.72em; }
+.eqs .r { font-style: normal; }
+kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header>
+  <h1 id="h1"><select id="seqSel" class="h1sel"></select> <small id="sub"></small> <span class="ver">v1</span></h1>
+  <p class="lead" id="lead"></p>
+</header>
+<main>
+  <section class="figure"><div id="figwrap"></div></section>
+  <section class="controls">
+    <div class="grp">
+      <button class="primary" id="play"></button>
+      <button id="reset"></button>
+      <button id="prev" title="←"></button>
+      <button id="next" title="→"></button>
+    </div>
+    <div class="grp">
+      <label><span id="lSpeed"></span> <input type="range" id="speed" min="2" max="120" step="1" value="10"><span class="v" id="vSpeed"></span></label>
+    </div>
+    <div class="grp">
+      <span id="seqParams"></span>
+      <label><input type="checkbox" id="relaxOverride"> <span id="lRelaxOverride"></span></label>
+      <label>T1 <input type="range" id="T1" min="10" max="1010" step="10" value="80"><span class="v" id="vT1"></span></label>
+      <label>T2 <input type="range" id="T2" min="5" max="505" step="5" value="60"><span class="v" id="vT2"></span></label>
+    </div>
+    <div class="grp">
+      <label><span id="lPhantom"></span> <select id="phantom"><option value="squareAir" selected></option><option value="letterFAir"></option><option value="uniform"></option><option value="square"></option><option value="letterF"></option><option value="ramp"></option><option value="brain"></option></select></label>
+      <label>N <select id="nsel"><option>3</option><option selected>5</option><option>7</option><option>9</option><option>11</option><option>13</option><option>15</option></select></label>
+      <label><input type="checkbox" id="linear"> <span id="lLinear"></span></label>
+      <label><input type="checkbox" id="compress" checked> <span id="lCompress"></span></label>
+      <button id="copysvg"></button>
+      <button id="loadseq"></button><input type="file" id="seqfile" accept=".json,application/json">
+      <button id="copyseq"></button>
+      <button id="lang">EN</button>
+    </div>
+    <div class="err" id="err"></div>
+    <div class="grp" hidden>
+    </div>
+  </section>
+  <div class="status" id="status"></div>
+  <section class="panes">
+    <div class="pane">
+      <h2 id="tSpins"></h2>
+      <canvas id="spins"></canvas>
+      <div class="foot">
+        <div class="seg" role="radiogroup"><label id="labDensity" class="on"><input type="radio" name="cellmode" id="modeDensity" value="density" checked><span id="lModeDensity"></span></label><label id="labPhase"><input type="radio" name="cellmode" id="modePhase" value="phase"><span id="lModePhase"></span></label><label id="labTissue"><input type="radio" name="cellmode" id="modeTissue" value="tissue"><span id="lModeTissue"></span></label></div>
+        <div class="tissues" id="tissueLegend"></div>
+        <div class="sub" id="sSpins"></div>
+      </div>
+    </div>
+    <div class="pane">
+      <h2 id="tK"></h2>
+      <canvas id="kspace"></canvas>
+      <div class="foot">
+        <div class="legend"><canvas id="wheel"></canvas><div class="samp" id="lastSample"></div></div>
+      </div>
+    </div>
+  </section>
+  <section class="controls">
+    <div class="grp">
+      <button class="primary" id="fplay"></button>
+      <button id="freset"></button>
+      <button id="fprev"></button>
+      <button id="fnext"></button>
+    </div>
+    <div class="grp">
+      <label><span id="lFspeed"></span> <input type="range" id="fspeed" min="1" max="200" step="1" value="10"><span class="v" id="vFspeed"></span></label>
+    </div>
+    <div class="status fstatus" id="fstatus"></div>
+  </section>
+  <section class="panes">
+    <div class="pane">
+      <h2 id="tImg"></h2>
+      <canvas id="img"></canvas>
+      <div class="foot"><div class="sub" id="sImg"></div></div>
+    </div>
+    <div class="pane">
+      <h2 id="tMode"></h2>
+      <canvas id="mode"></canvas>
+      <div class="foot">
+        <div class="gainrow" id="gainRow" hidden><span class="sub" id="lGain"></span>
+          <div class="seg" role="radiogroup" id="gainSeg"><label class="on"><input type="radio" name="rgain" value="1" checked><span>×1</span></label><label><input type="radio" name="rgain" value="10"><span>×10</span></label><label><input type="radio" name="rgain" value="100"><span>×100</span></label><label><input type="radio" name="rgain" value="1000"><span>×1000</span></label></div>
+        </div>
+        <div class="sub" id="sMode"></div>
+      </div>
+    </div>
+  </section>
+  <details><summary id="tNotes"></summary><ul id="notes"></ul></details>
+  <details><summary id="tEq"></summary><div id="eqs" class="eqs"></div></details>
+</main>
+
+<script>/* seq_engine_v1.js — generic engine for didactic 2D imaging sequences described as text (JSON).
+ *
+ * A sequence file declares parameters, derived variables and a list of events per shot (repetition):
+ *   rf    {t, dur, flip (deg), axis 'x'|'y', refocus?}   hard pulse; the angle accrues linearly over dur (visible rotation);
+ *                                                        relaxation is suspended during the pulse; refocus: k -> -k at the center,
+ *                                                        otherwise (excitation) the k label resets to 0 at the center
+ *   grad  {axis 'x'|'y', t, dur, area}                   constant lobe; area in dk = 1/FOV units (k moved by the lobe)
+ *   adc   {t, dur, n}                                    readout window; n samples at the centers of n equal sub-intervals
+ *   spoil {t}                                            ideal spoiler: transverse magnetization zeroed at t
+ *   repeat {count, var, vars?, events}                   loop; the loop variable and local vars are visible inside
+ * Numbers may be expressions (strings) in the parameters, the table values, the shot index n, loop variables and
+ * the derived vars (evaluated in order). Expressions are plain JavaScript arithmetic evaluated with Function();
+ * a sequence file is code you choose to run, like a notebook cell.
+ *
+ * Physics (same didactic model as the hand-written programs): N x N isochromats (N odd) at x,y in {-(N-1)/2..(N-1)/2}, rotating frame
+ * (precession only under gradients: m -> m exp(-i 2 pi (dkx x + dky y)/5)), hard pulses, exponential relaxation,
+ * signal S = sum of (Mx + i My) over the pixels. Samples are the forward DFT of the pixel magnetizations.
+ * Units: ms, dk.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.SeqEngine = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+  // N (odd) pixels per side; pixel p = row*N + col, row 0 at the top (y = +HALF), x = col - HALF
+  function pixelXY(p, N) { const H = (N - 1) / 2; return { x: (p % N) - H, y: H - Math.floor(p / N) }; }
+  const PHANTOM_NAMES = ['squareAir', 'letterFAir', 'uniform', 'square', 'letterF', 'ramp', 'brain'];
+  // Phantoms are tissue maps: every pixel has a tissue label (from a tissue dictionary {key: {pd, T1, T2, color, name}})
+  // and an optional proton-density factor. Returns {label[], pdf[], M0[], T1[], T2[], tissues}, any odd N.
+  function phantom(name, N, tissues) {
+    const H = (N - 1) / 2, NP = N * N, at = (x, y) => (H - y) * N + (x + H);
+    const label = new Array(NP).fill(name.endsWith('Air') ? 'air' : 'wm'), pdf = new Array(NP).fill(1);
+    if (name.endsWith('Air')) name = name.slice(0, -3);                 // filled/empty versions: figure on air
+    if (name === 'uniform') label.fill('gm');
+    else if (name === 'square') { const h = Math.max(1, Math.floor(0.3 * N)); for (let y = -h; y <= h; y++) for (let x = -h; x <= h; x++) label[at(x, y)] = 'gm'; }
+    else if (name === 'letterF') {
+      const t = Math.max(1, Math.round(N / 5)), x0 = -H, wTop = N - 1, wMid = Math.round(0.6 * (N - 1)), yMid = H - Math.round(0.4 * (N - 1));
+      for (let y = -H; y <= H; y++) for (let k = 0; k < t; k++) label[at(x0 + k, y)] = 'gm';
+      for (let k = 0; k < t; k++) for (let x = x0; x <= x0 + wTop; x++) label[at(x, H - k)] = 'gm';
+      for (let k = 0; k < t; k++) for (let x = x0; x <= x0 + wMid; x++) label[at(x, yMid - k)] = 'gm';
+    } else if (name === 'ramp') { label.fill('gm'); for (let p = 0; p < NP; p++) pdf[p] = 0.2 + 0.8 * (p % N) / Math.max(1, N - 1); }
+    else if (name === 'brain') {
+      // concentric head: air, scalp fat, skull, CSF, gray matter, white matter, CSF ventricle at the center, one lesion
+      const R = 0.46 * N + 0.1;
+      for (let y = -H; y <= H; y++) for (let x = -H; x <= H; x++) {
+        const r = Math.hypot(x, y) / R; let k;
+        if (r > 1.0) k = 'air'; else if (r > 0.93) k = 'fat'; else if (r > 0.86) k = 'bone'; else if (r > 0.76) k = 'csf'; else if (r > 0.6) k = 'gm'; else if (r < 0.2) k = 'csf'; else k = 'wm';
+        if (k === 'wm' && x > 0 && y > 0 && Math.hypot(x - 0.36 * R, y - 0.28 * R) <= Math.max(0.5, 0.11 * R)) k = 'lesion';
+        label[at(x, y)] = k;
+      }
+    } else throw new Error('unknown phantom ' + name);
+    const M0 = new Array(NP), T1 = new Array(NP), T2 = new Array(NP);
+    for (let p = 0; p < NP; p++) { const t = tissues[label[p]]; if (!t) throw new Error('unknown tissue ' + label[p]); M0[p] = t.pd * pdf[p]; T1[p] = t.T1; T2[p] = t.T2; }
+    return { label, pdf, M0, T1, T2, tissues };
+  }
+  // helpers available to sequence expressions
+  function range(a, b, step) { step = step || (b >= a ? 1 : -1); const out = []; for (let v = a; step > 0 ? v <= b + 1e-9 : v >= b - 1e-9; v += step) out.push(v); return out; }
+  function centric(H) { const out = [0]; for (let k = 1; k <= H; k++) out.push(k, -k); return out; }
+  function indexOf(arr, v) { return arr.indexOf(v); }
+  function rev(arr) { return arr.slice().reverse(); }
+
+  /* ---------- expressions ---------- */
+  const fnCache = new Map();
+  function evalExpr(expr, ctx) {
+    if (typeof expr === 'number') return expr;
+    if (typeof expr === 'boolean') return expr ? 1 : 0;
+    if (expr == null) return 0;
+    if (typeof expr !== 'string') throw new Error('bad expression ' + JSON.stringify(expr));
+    const keys = Object.keys(ctx), sig = keys.join(',') + '|' + expr;
+    let fn = fnCache.get(sig);
+    if (!fn) { fn = new Function(...keys, 'with (Math) { return (' + expr + '); }'); fnCache.set(sig, fn); }
+    const v = fn(...keys.map(k => ctx[k]));
+    if (typeof v === 'boolean') return v ? 1 : 0;
+    if (typeof v !== 'number' || Number.isNaN(v)) throw new Error('expression "' + expr + '" gave ' + v);
+    return v;
+  }
+  function evalVars(vars, ctx) { if (!vars) return; for (const [k, e] of Object.entries(vars)) ctx[k] = evalExpr(e, ctx); }
+  // text templates: ${expr} substituted; |v| formatting helpers in ctx
+  function fmtText(tpl, ctx) {
+    return String(tpl).replace(/\$\{([^}]+)\}/g, (_, e) => {
+      const v = evalExpr(e, ctx); const r = Math.round(v * 100) / 100;
+      return (r > 0 && /^\+/.test(e) ? '+' : '') + (r < 0 ? '−' + (-r) : String(r));
+    });
+  }
+
+  /* ---------- compile: sequence definition + parameter values -> absolute schedule ---------- */
+  function paramDefaults(def) {
+    const P = {};
+    for (const p of def.params || []) P[p.id] = p.type === 'select' ? p.default : (p.type === 'checkbox' ? (p.default ? 1 : 0) : p.default);
+    return P;
+  }
+  function evalTable(v, ctx) { return typeof v === 'string' ? (new Function(...Object.keys(ctx), 'with (Math) { return (' + v + '); }'))(...Object.values(ctx)) : v; }
+  function baseContext(def, P, N) {
+    const ctx = { N, HALF: (N - 1) / 2, PI: Math.PI, range, centric, indexOf, rev };
+    for (const [k, v] of Object.entries(def.constants || {})) ctx[k] = v;
+    for (const [k, v] of Object.entries(def.tables || {})) ctx[k] = evalTable(v, ctx);
+    for (const p of def.params || []) {
+      if (p.type === 'select') {                         // a select contributes its chosen option's values (arrays or expressions)
+        const opt = (p.options || []).find(o => o.value === P[p.id]) || p.options[0];
+        if (opt && opt.values) for (const [k, v] of Object.entries(opt.values)) ctx[k] = evalTable(v, ctx);
+        ctx[p.id] = (p.options || []).indexOf(opt);
+      } else ctx[p.id] = P[p.id];
+    }
+    evalVars(def.vars, ctx);
+    return ctx;
+  }
+  function expandEvents(list, ctx, out, T0) {
+    for (const ev of list || []) {
+      if (ev.if != null && !evalExpr(ev.if, ctx)) continue;
+      if (ev.type === 'repeat') {
+        const count = Math.round(evalExpr(ev.count, ctx));
+        for (let i = 0; i < count; i++) { const c = Object.assign({}, ctx); c[ev.var || 'i'] = i; evalVars(ev.vars, c); expandEvents(ev.events, c, out, T0); }
+        continue;
+      }
+      const e = { type: ev.type, def: ev, ctx };
+      e.t = T0 + evalExpr(ev.t, ctx); e.dur = ev.dur != null ? evalExpr(ev.dur, ctx) : 0; e.t1 = e.t + e.dur;
+      if (ev.type === 'rf') { e.flip = evalExpr(ev.flip, ctx); e.axis = ev.axis || 'x'; e.refocus = !!ev.refocus; e.tc = e.t + e.dur / 2; }
+      else if (ev.type === 'grad') { e.axis = ev.axis; e.area = evalExpr(ev.area, ctx); e.amp = e.dur > 0 ? e.area / e.dur : 0; }
+      else if (ev.type === 'adc') { e.n = Math.round(evalExpr(ev.n, ctx)); e.samples = []; for (let j = 0; j < e.n; j++) e.samples.push(e.t + (j + 0.5) * e.dur / e.n); e.tc = e.t + e.dur / 2; }
+      else if (ev.type === 'spoil') { /* t only */ }
+      else if (ev.type === 'band' || ev.type === 'mark' || ev.type === 'arrow') { if (ev.to != null) e.t1 = T0 + evalExpr(ev.to, ctx); e.label = ev.label; e.style = ev.style; e.level = ev.level || 0; }
+      else throw new Error('unknown event type ' + ev.type);
+      out.push(e);
+    }
+  }
+  function compile(def, P, lang, N) {
+    lang = lang || 'pt'; N = N || 5;
+    const loc = v => (v && typeof v === 'object') ? (v[lang] || v.pt || v.en || '') : (v == null ? '' : String(v));
+    const ctx0 = baseContext(def, P, N);
+    const nShots = Math.max(1, Math.round(evalExpr(def.shots == null ? 1 : def.shots, ctx0)));
+    const TR = evalExpr(def.TR, ctx0);
+    const shots = [], events = [], bands = [], marks = [], arrows = [], adcs = [];
+    for (let n = 0; n < nShots; n++) {
+      const ctx = Object.assign({}, ctx0, { n }); evalVars(def.shotVars, ctx);
+      const T0 = n * TR, out = [];
+      expandEvents(def.events, ctx, out, T0);
+      let tActive = 0;
+      for (const e of out) {
+        if (e.def.desc != null) e.desc = fmtText(loc(e.def.desc), e.ctx);
+        if (e.type === 'grad' && e.def.label != null) e.label = fmtText(loc(e.def.label), e.ctx);
+        if (e.type === 'band') bands.push(Object.assign({ shot: n }, e));
+        else if (e.type === 'mark') { if (n === 0) marks.push(e); }
+        else if (e.type === 'arrow') { if (n === 0) arrows.push(e); }
+        else { e.shot = n; events.push(e); if (e.type !== 'spoil') tActive = Math.max(tActive, e.t1 - T0); if (e.type === 'adc') adcs.push(e); }
+      }
+      shots.push({ n, T0, ctx, tActive, label: def.shotLabel ? fmtText(loc(def.shotLabel), ctx) : '' });
+    }
+    const tActive = Math.max(...shots.map(s => s.tActive));
+    if (TR < tActive) throw new Error('TR shorter than the active part (' + tActive.toFixed(1) + ' ms)');
+    // bands: default one band per shot from its first rf center
+    if (!bands.length) for (const s of shots) { const rf = events.find(e => e.shot === s.n && e.type === 'rf'); bands.push({ shot: s.n, t: rf ? rf.tc : s.T0, label: s.label }); }
+    bands.sort((a, b) => a.t - b.t);
+    for (let i = 0; i < bands.length; i++) { bands[i].t1 = i + 1 < bands.length ? bands[i + 1].t : nShots * TR; if (bands[i].label == null) bands[i].label = shots[bands[i].shot].label; else bands[i].label = fmtText(loc(bands[i].label), bands[i].ctx); }
+    const samples = []; for (const a of adcs) a.samples.forEach((t, j) => samples.push({ t, shot: a.shot, adc: a, j }));
+    samples.sort((a, b) => a.t - b.t);
+    // hard-pulse model: RF must not overlap gradients or readouts
+    for (const r of events) if (r.type === 'rf') for (const e of events) if (e !== r && e.type !== 'spoil' && e.shot === r.shot && e.t < r.t1 - 1e-9 && e.t1 > r.t + 1e-9) throw new Error('RF pulse at ' + r.t.toFixed(1) + ' ms overlaps a ' + e.type + ' event: increase the timing parameters');
+    for (const e of events) if (e.t < 0 || e.t1 > S_tEnd(nShots, TR) + 1e-9) throw new Error('event outside the repetition');
+    return { def, P, N, NPIX: N * N, ctx0, nShots, TR, tActive, tEnd: nShots * TR, shots, events, bands, marks, arrows, adcs, samples, lang };
+  }
+
+  function S_tEnd(n, TR) { return n * TR; }
+
+  /* ---------- simulate ---------- */
+  function overlap(a, b, iv) { return Math.max(0, Math.min(b, iv[1]) - Math.max(a, iv[0])); }
+  function rotY(mx, my, mz, th) { const c = Math.cos(th), s = Math.sin(th); for (let p = 0; p < mx.length; p++) { const x = mx[p], z = mz[p]; mx[p] = x * c + z * s; mz[p] = -x * s + z * c; } }
+  function rotX(mx, my, mz, th) { const c = Math.cos(th), s = Math.sin(th); for (let p = 0; p < mx.length; p++) { const y = my[p], z = mz[p]; my[p] = y * c - z * s; mz[p] = y * s + z * c; } }
+
+  /* relax: {T1, T2} numbers or per-pixel arrays (Infinity disables), dt (fine step, ms), nGap (points per idle gap) */
+  function simulate(S, M0, relax) {
+    const N = S.N, NPIX = S.NPIX, dt = relax.dt || 0.1, nGap = relax.nGap || relax.nTail || 80;
+    if (M0.length !== NPIX) throw new Error('phantom size ' + M0.length + ' does not match N = ' + N);
+    const arr = v => Array.isArray(v) ? v : new Array(NPIX).fill(v);
+    const T1 = arr(relax.T1), T2 = arr(relax.T2);
+    // time grid: fine (dt) inside and around events, coarse (nGap points) across idle gaps, plus the exact sample instants
+    const MARGIN = 1.0, grid = [], busy = [];
+    for (const e of S.events) if (e.type !== 'spoil') busy.push([Math.max(0, e.t - MARGIN), Math.min(S.tEnd, e.t1 + MARGIN)]);
+    busy.sort((a, b) => a[0] - b[0]);
+    const merged = []; for (const iv of busy) { const l = merged[merged.length - 1]; if (l && iv[0] <= l[1] + 1e-9) l[1] = Math.max(l[1], iv[1]); else merged.push([iv[0], iv[1]]); }
+    let cursor = 0;
+    const coarse = (a, b) => { const n = Math.max(1, Math.min(nGap, Math.round((b - a) / dt))); for (let i = 1; i < n; i++) grid.push(a + i * (b - a) / n); };
+    for (const [a, b] of merged) { if (a > cursor) { grid.push(cursor); coarse(cursor, a); } const n = Math.round((b - a) / dt); for (let i = 0; i <= n; i++) grid.push(a + i * dt); cursor = b; }
+    if (cursor < S.tEnd) { grid.push(cursor); coarse(cursor, S.tEnd); }
+    grid.push(S.tEnd); for (const smp of S.samples) grid.push(smp.t); for (const sh of S.shots) grid.push(sh.T0);
+    grid.sort((a, b) => a - b);
+    const times = [], shotOf = [];
+    for (const t of grid) { if (times.length && t - times[times.length - 1] < 1e-7) continue; times.push(t); shotOf.push(Math.min(S.nShots - 1, Math.floor(t / S.TR))); }
+    const Nt = times.length;
+    const Mx = new Float32Array(NPIX * Nt), My = new Float32Array(NPIX * Nt), Mz = new Float32Array(NPIX * Nt);
+    const sRe = new Float32Array(Nt), sIm = new Float32Array(Nt), kxM = new Float32Array(Nt), kyM = new Float32Array(Nt);
+    const mx = new Float64Array(NPIX), my = new Float64Array(NPIX), mz = Float64Array.from(M0);
+    const X = new Float64Array(NPIX), Y = new Float64Array(NPIX);
+    for (let p = 0; p < NPIX; p++) { const q = pixelXY(p, N); X[p] = q.x; Y[p] = q.y; }
+    const rfs = S.events.filter(e => e.type === 'rf'), grads = S.events.filter(e => e.type === 'grad'), spoils = S.events.filter(e => e.type === 'spoil');
+    // sample lookup by grid index (the sample instants are grid points)
+    const sampleIdx = new Map(); let si = 0;
+    for (const smp of S.samples) { while (si < Nt - 1 && times[si] < smp.t - 1e-7) si++; sampleIdx.set(si, (sampleIdx.get(si) || []).concat([smp])); }
+    let kx = 0, ky = 0; const samples = [];
+    for (let i = 0; i < Nt; i++) {
+      if (i > 0) {
+        const a = times[i - 1], bb = times[i], d = bb - a;
+        let oP = 0; for (const r of rfs) oP += overlap(a, bb, [r.t, r.t1]);
+        const dR = d - oP;
+        if (dR > 0) for (let p = 0; p < NPIX; p++) {
+          const e1 = Number.isFinite(T1[p]) ? Math.exp(-dR / T1[p]) : 1, e2 = Number.isFinite(T2[p]) ? Math.exp(-dR / T2[p]) : 1;
+          mx[p] *= e2; my[p] *= e2; mz[p] = M0[p] + (mz[p] - M0[p]) * e1;
+        }
+        for (const r of rfs) {
+          const o = overlap(a, bb, [r.t, r.t1]);
+          if (o > 0) { const th = r.flip * Math.PI / 180 * o / r.dur; if (r.axis === 'y') rotY(mx, my, mz, th); else rotX(mx, my, mz, th); }
+          if (a < r.tc && bb >= r.tc) { if (r.refocus) { kx = -kx; ky = -ky; } else { kx = 0; ky = 0; } }   // refocusing: k -> -k; excitation: fresh M_perp at k = 0
+        }
+        let dkx = 0, dky = 0;
+        for (const g of grads) { const o = overlap(a, bb, [g.t, g.t1]); if (o > 0) { if (g.axis === 'x') dkx += g.amp * o; else dky += g.amp * o; } }
+        if (dkx !== 0 || dky !== 0) {
+          kx += dkx; ky += dky;
+          for (let p = 0; p < NPIX; p++) { const ph = 2 * Math.PI * (dkx * X[p] + dky * Y[p]) / N, c = Math.cos(ph), s = Math.sin(ph); const x = mx[p], y = my[p]; mx[p] = x * c + y * s; my[p] = -x * s + y * c; }
+        }
+        for (const sp of spoils) if (a < sp.t && bb >= sp.t) { mx.fill(0); my.fill(0); kx = 0; ky = 0; }
+      }
+      let re = 0, im = 0;
+      for (let p = 0; p < NPIX; p++) { Mx[i * NPIX + p] = mx[p]; My[i * NPIX + p] = my[p]; Mz[i * NPIX + p] = mz[p]; re += mx[p]; im += my[p]; }
+      sRe[i] = re; sIm[i] = im; kxM[i] = kx; kyM[i] = ky;
+      const sl = sampleIdx.get(i);
+      if (sl) for (const smp of sl) samples.push({ idx: i, t: times[i], shot: smp.shot, adc: smp.adc, j: smp.j, kx: Math.round(kx), ky: Math.round(ky), re, im });
+    }
+    const Smax = M0.reduce((s, v) => s + v, 0);
+    return { S, N, NPIX, M0, relax, times, shotOf, Mx, My, Mz, sRe, sIm, kxM, kyM, samples, Smax };
+  }
+  function indexAt(sim, t) {
+    const a = sim.times; let lo = 0, hi = a.length - 1;
+    if (t <= a[0]) return 0; if (t >= a[hi]) return hi;
+    while (hi - lo > 1) { const m = (lo + hi) >> 1; if (a[m] <= t) lo = m; else hi = m; }
+    return (t - a[lo] < a[hi] - t) ? lo : hi;
+  }
+  // which event is active at t (for the status line): rf > adc > grad > spoil-tail > free
+  function segmentAt(S, t) {
+    const at = S.events.filter(e => e.type !== 'spoil' && t >= e.t && t <= e.t1);
+    const rf = at.find(e => e.type === 'rf'); if (rf) return { kind: 'rf', e: rf };
+    const adc = at.find(e => e.type === 'adc'); if (adc) return { kind: 'adc', e: adc, grads: at.filter(e => e.type === 'grad') };
+    const gr = at.filter(e => e.type === 'grad'); if (gr.length) return { kind: 'grad', grads: gr };
+    const shot = S.shots[Math.min(S.nShots - 1, Math.max(0, Math.floor(t / S.TR)))];
+    if (t - shot.T0 > shot.tActive + 1e-9) return { kind: 'tail' };
+    const first = S.events.filter(e => e.shot === shot.n).reduce((m, e) => Math.min(m, e.t), Infinity);
+    return { kind: t < first ? 'rest' : 'free' };
+  }
+  function eventTimes(S) {       // for stepping
+    const ts = new Set([0, S.tEnd]);
+    for (const e of S.events) { ts.add(e.t); if (e.dur > 0) ts.add(e.t1); if (e.tc != null) ts.add(e.tc); }
+    for (const s of S.shots) ts.add(s.T0 + s.tActive);
+    return [...ts].sort((a, b) => a - b);
+  }
+  return { PHANTOM_NAMES, phantom, pixelXY, range, centric, indexOf, rev, evalExpr, fmtText, paramDefaults, compile, simulate, indexAt, segmentAt, eventTimes };
+});
+</script>
+<script>/* seq_draw_v1.js — generic SVG drawing of a compiled sequence schedule (SeqEngine.compile) with its simulation:
+ * rows RF, Gpe (y), Gfe (x), Signal; bands, arrows and marks declared in the sequence file; timeline cursor and
+ * reveal clip for animation; optional compression of each shot's tail. Pure string builder (browser and node). */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.SeqDraw = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+  const S_PX = 5, GUT = 172, RIGHT = 22, WTAIL = 50;
+  const ROWS = { rf: 74, gy: 138, gx: 202, sig: 266 };
+  const Y_LEVEL = [314, 344], HEIGHT = 376, AMP_SIG = 34;
+  const C = { text: '#232323', base: '#8f8f8f', ghost: '#e6b58a', band: '#f4f4f4', hl: '#fff4d6', rf: '#2e7d2a', gy: '#d4701c', gx: '#2b5aa8',
+    sig: '#1f4e9a', sigGhost: '#b8c7e0', sigFill: '#dbe5f6', env: '#9aa8bd', cursor: '#c2185b',
+    te: '#1a9e2a', tr: '#e0231d', esp: '#7b1fa2' };
+  const f = v => (Math.round(v * 100) / 100).toString();
+  function phaseColor(phi) { let h = (phi / (2 * Math.PI)) % 1; if (h < 0) h += 1; return `hsl(${Math.round(h * 360)} 85% 46%)`; }
+  const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  // label markup: a_b or a_{bc} -> subscript, a^b / a^{bc} -> superscript
+  function markup(s, base) {
+    const sub = Math.round(base * 0.7), out = []; let i = 0; s = String(s);
+    while (i < s.length) {
+      const ch = s[i];
+      if ((ch === '_' || ch === '^') && i + 1 < s.length) {
+        let txt; if (s[i + 1] === '{') { const j = s.indexOf('}', i + 2); txt = s.slice(i + 2, j < 0 ? s.length : j); i = j < 0 ? s.length : j + 1; } else { txt = s[i + 1]; i += 2; }
+        const dy = ch === '_' ? Math.round(base * 0.3) : -Math.round(base * 0.4);
+        out.push(`<tspan font-size="${sub}" dy="${dy}">${esc(txt)}</tspan><tspan dy="${-dy}" font-size="${base}"> </tspan>`.replace('> </tspan>', '></tspan>'));
+      } else { let j = i; while (j < s.length && s[j] !== '_' && s[j] !== '^') j++; out.push(esc(s.slice(i, j))); i = j; }
+    }
+    return out.join('');
+  }
+  const GAPMIN = 25;   // idle gaps longer than this (ms) are compressed to WTAIL px when compress is on
+  // piecewise-linear display coordinate u(t): to-scale segments around events, compressed idle gaps
+  function layout(S, compress) {
+    const comp = compress !== false, MARGIN = 2;
+    const busy = []; for (const e of S.events) if (e.type !== 'spoil') busy.push([Math.max(0, e.t - MARGIN), Math.min(S.tEnd, e.t1 + MARGIN)]);
+    busy.sort((p, q) => p[0] - q[0]);
+    const merged = []; for (const iv of busy) { const l = merged[merged.length - 1]; if (l && iv[0] <= l[1] + 1e-9) l[1] = Math.max(l[1], iv[1]); else merged.push([iv[0], iv[1]]); }
+    const segs = []; let cur = 0, u = 0;                      // {t0, t1, u0, u1, compressed}
+    const push = (t0, t1, c) => { if (t1 <= t0 + 1e-9) return; const du = c ? WTAIL / S_PX : t1 - t0; segs.push({ t0, t1, u0: u, u1: u + du, compressed: c }); u += du; };
+    for (const [a0, b0] of merged) { if (a0 > cur) push(cur, a0, comp && a0 - cur > GAPMIN); push(a0, b0, false); cur = b0; }
+    if (cur < S.tEnd) push(cur, S.tEnd, comp && S.tEnd - cur > GAPMIN);
+    const uOf = t => { t = Math.max(0, Math.min(S.tEnd, t)); let lo = 0, hi = segs.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (segs[m].t0 <= t) lo = m; else hi = m - 1; } const g = segs[lo]; return g.u0 + (t - g.t0) * (g.u1 - g.u0) / (g.t1 - g.t0); };
+    const tOf = uu => { uu = Math.max(0, Math.min(u, uu)); let lo = 0, hi = segs.length - 1; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (segs[m].u0 <= uu) lo = m; else hi = m - 1; } const g = segs[lo]; return g.t0 + (uu - g.u0) * (g.t1 - g.t0) / (g.u1 - g.u0); };
+    const xOfU = v => GUT + S_PX * v, xOf = t => xOfU(uOf(t));
+    return { segs, uOf, tOf, xOf, xOfU, uEnd: u, s: S_PX, gutter: GUT, rows: ROWS, width: GUT + S_PX * u + RIGHT, height: HEIGHT, compressed: comp };
+  }
+  function rect(x1, x2, y0, h) { return `M${f(x1)},${f(y0)} L${f(x1)},${f(y0 - h)} L${f(x2)},${f(y0 - h)} L${f(x2)},${f(y0)} Z`; }
+  function sincPath(xc, y0, halfW, A) {
+    const K = 2.6, pts = [];
+    for (let i = 0; i <= 90; i++) { const u = -1 + 2 * i / 90, x = u * K, s = Math.abs(x) < 1e-9 ? 1 : Math.sin(Math.PI * x) / (Math.PI * x), ap = Math.pow(Math.cos(Math.PI * u / 2), 0.6); pts.push(`${f(xc + u * halfW)},${f(y0 - A * s * ap)}`); }
+    return 'M' + pts.join(' L');
+  }
+  // split [t0,t1] into pieces following the layout segments; compressed gaps are drawn dashed
+  function pieces(L, S, t0, t1) {
+    const out = [];
+    for (const g of L.segs) { const a0 = Math.max(t0, g.t0), b0 = Math.min(t1, g.t1); if (b0 > a0 + 1e-9) out.push({ t0: a0, t1: b0, dashed: g.compressed }); }
+    return out;
+  }
+  /* opts: {lang, compress, revealAll, cursorT, showCursor, labels:{peDesc, feDesc, scale, envDesc}} */
+  function build(S, sim, opts) {
+    opts = opts || {};
+    const L = layout(S, opts.compress), x = L.xOf, R = ROWS, W = L.width, H = HEIGHT, lang = opts.lang || 'pt';
+    const loc = v => (v && typeof v === 'object') ? (v[lang] || v.pt || v.en || '') : (v == null ? '' : v);
+    const lab = Object.assign({ peDesc: 'codificação por fase', feDesc: 'codificação por frequência', scale: '10 ms', envDesc: 'e^{−t/T2}' }, opts.labels || {});
+    const out = [];
+    out.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${f(W)} ${H}" width="${f(W)}" height="${H}" font-family="'IBM Plex Sans', 'Segoe UI', Helvetica, Arial, sans-serif" style="user-select:none">`);
+    out.push('<defs>');
+    for (const st of ['te', 'tr', 'esp']) out.push(`<marker id="ah_${st}" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="${C[st]}"/></marker>`);
+    out.push(`<clipPath id="reveal"><rect id="revealRect" x="0" y="0" width="${opts.revealAll ? f(W) : 0}" height="${H}"/></clipPath></defs>`);
+    out.push(`<rect width="${f(W)}" height="${H}" fill="#ffffff"/>`);
+    // bands
+    const bandX = i => x(S.bands[i].t), bandW = i => Math.min(x(S.bands[i].t1), L.xOfU(L.uEnd)) - bandX(i);
+    S.bands.forEach((bd, i) => { if (i % 2 === 1) out.push(`<rect x="${f(bandX(i))}" y="12" width="${f(bandW(i))}" height="${H - 24}" fill="${C.band}"/>`); });
+    out.push(`<rect id="trHighlight" x="${f(bandX(0))}" y="12" width="${f(bandW(0))}" height="${H - 24}" fill="${C.hl}" opacity="0"/>`);
+    S.bands.forEach((bd, i) => { const xm = bandX(i) + bandW(i) / 2; out.push(`<text class="trh" id="trh${i}" x="${f(xm)}" y="17" text-anchor="middle" font-size="13" fill="${C.text}">${markup(loc(bd.label), 13)}</text>`); });
+    // baselines and row labels
+    for (const [key, y] of Object.entries(R)) {
+      for (const pc of pieces(L, S, 0, S.tEnd)) out.push(`<line x1="${f(x(pc.t0))}" y1="${y}" x2="${f(x(pc.t1))}" y2="${y}" stroke="${C.base}" stroke-width="1.2"${pc.dashed ? ' stroke-dasharray="5 5"' : ''}/>`);
+      if (key === 'gy' || key === 'gx') {
+        const ax = key === 'gy' ? 'y' : 'x', sub = key === 'gy' ? 'pe' : 'fe';
+        out.push(`<text x="${GUT - 12}" y="${y + 1}" text-anchor="end" font-size="18" font-weight="600" fill="${C.text}">G<tspan font-size="12" dy="3">${sub}</tspan><tspan dy="-3" font-size="15" font-weight="400"> = ∂B</tspan><tspan font-size="10" dy="3" font-weight="400">z</tspan><tspan dy="-3" font-size="15" font-weight="400">/∂${ax}</tspan></text>`);
+        out.push(`<text x="${GUT - 12}" y="${y + 17}" text-anchor="end" font-size="11.5" fill="${C.text}">${key === 'gy' ? lab.peDesc : lab.feDesc}</text>`);
+      } else out.push(`<text x="${GUT - 12}" y="${y + 6}" text-anchor="end" font-size="18" font-weight="600" fill="${C.text}">${key === 'rf' ? 'RF' : 'Signal'}</text>`);
+    }
+    // amplitude scale: the strongest x gradient (readout) is 24 px high
+    const grads = S.events.filter(e => e.type === 'grad'), rfs = S.events.filter(e => e.type === 'rf'), adcs = S.events.filter(e => e.type === 'adc');
+    const ampRef = Math.max(1e-9, ...grads.filter(g => g.axis === 'x').map(g => Math.abs(g.amp)), ...grads.map(g => Math.abs(g.amp)) .map(v => v * 0.6));
+    const hOf = g => 24 * g.amp / ampRef;
+    // RF
+    for (const r of rfs) {
+      const A = Math.max(12, Math.min(38, 20 + 18 * (Math.abs(r.flip) - 90) / 90)), halfW = 0.9 * r.dur * S_PX;
+      out.push(`<path d="${sincPath(x(r.tc), R.rf, halfW, A)}" fill="none" stroke="${C.rf}" stroke-width="1.6"/>`);
+      out.push(`<text x="${f(x(r.tc))}" y="${f(R.rf - A - (A > 30 ? 4 : 10))}" text-anchor="middle" font-size="14" fill="${C.text}">${f(r.flip)}°</text>`);
+    }
+    // gradients (ghost tables first, then lobes)
+    for (const g of grads) {
+      const y0 = g.axis === 'y' ? R.gy : R.gx, col = g.axis === 'y' ? C.gy : C.gx;
+      if (g.def.ghost && g.ctx[g.def.ghost]) for (const v of g.ctx[g.def.ghost]) { if (v === 0 || Math.abs(v * (g.dur ? 1 / g.dur : 0) - g.amp) < 1e-9) continue; const hh = 24 * (v / g.dur) / ampRef; out.push(`<path d="${rect(x(g.t), x(g.t1), y0, hh)}" fill="none" stroke="${C.ghost}" stroke-width="1" stroke-dasharray="3 2"/>`); }
+    }
+    for (const g of grads) {
+      const y0 = g.axis === 'y' ? R.gy : R.gx, col = g.axis === 'y' ? C.gy : C.gx, h = hOf(g);
+      if (Math.abs(g.area) < 1e-9) out.push(`<line x1="${f(x(g.t))}" y1="${y0}" x2="${f(x(g.t1))}" y2="${y0}" stroke="${col}" stroke-width="3.2" stroke-linecap="round"/>`);
+      else out.push(`<path d="${rect(x(g.t), x(g.t1), y0, h)}" fill="${col}" stroke="${col}" stroke-width="1"/>`);
+      if (g.label != null && S.N <= 7) out.push(`<text x="${f(x(g.t1) + 4)}" y="${f(y0 - h + (h >= 0 ? -3 : 12))}" font-size="12" font-weight="600" fill="${col}">${esc(g.label)}</text>`);
+    }
+    // signal: optional T2 envelope of the largest possible signal, then the simulated signal in ADC windows
+    const yS = v => R.sig - AMP_SIG * v / sim.Smax, T2 = sim.relax.T2;
+    if (S.def.envelope && Number.isFinite(T2) && rfs.length) {
+      const r0 = rfs[0], tA0 = S.shots[0].tActive; let env = '', last = null;
+      for (let t = r0.t1; t <= tA0; t += 0.5) { let tp = 0; for (const r of rfs) if (r !== r0 && r.shot === 0) tp += Math.max(0, Math.min(t, r.t1) - r.t); last = sim.Smax * Math.exp(-(t - r0.t1 - tp) / T2); env += (env ? 'L' : 'M') + f(x(t)) + ',' + f(yS(last)) + ' '; }
+      out.push(`<path d="${env}" fill="none" stroke="${C.env}" stroke-width="1" stroke-dasharray="3 3"/>`);
+      out.push(`<text x="${f(x(tA0) + 4)}" y="${f(yS(last) + 4)}" font-size="11" fill="${C.env}">${lab.envDesc}</text>`);
+    }
+    for (const sh of S.shots) {                 // net transverse magnetization |S(t)| through the whole active part
+      const i0 = SeqIndex(sim, sh.T0), i1 = SeqIndex(sim, Math.min(S.tEnd, sh.T0 + S.TR)); let mag = '';
+      for (let i = i0; i <= i1; i++) mag += (i === i0 ? 'M' : 'L') + f(x(sim.times[i])) + ',' + f(yS(Math.hypot(sim.sRe[i], sim.sIm[i]))) + ' ';
+      out.push(`<path d="${mag}" fill="none" stroke="${C.sigGhost}" stroke-width="0.9" stroke-dasharray="2 2"/>`);
+      out.push(`<g clip-path="url(#reveal)"><path d="${mag}" fill="none" stroke="${C.env}" stroke-width="1.1"/></g>`);
+    }
+    for (const a of adcs) {
+      const i0 = SeqIndex(sim, a.t - 0.8), i1 = SeqIndex(sim, a.t1 + 0.8);
+      let line = '', env = `M${f(x(sim.times[i0]))},${R.sig} `;
+      for (let i = i0; i <= i1; i++) { const xx = f(x(sim.times[i])); line += (i === i0 ? 'M' : 'L') + xx + ',' + f(yS(sim.sRe[i])) + ' '; env += 'L' + xx + ',' + f(yS(Math.hypot(sim.sRe[i], sim.sIm[i]))) + ' '; }
+      env += `L${f(x(sim.times[i1]))},${R.sig} Z`;
+      out.push(`<path d="${line}" fill="none" stroke="${C.sigGhost}" stroke-width="1.2"/>`);
+      out.push(`<g clip-path="url(#reveal)"><path d="${env}" fill="${C.sigFill}" stroke="none"/><path d="${line}" fill="none" stroke="${C.sig}" stroke-width="1.7"/>`);
+      for (const s of sim.samples) if (s.adc === a) out.push(`<circle cx="${f(x(s.t))}" cy="${f(yS(s.re))}" r="3.4" fill="${phaseColor(Math.atan2(s.im, s.re))}" stroke="#333" stroke-width="0.8"/>`);
+      out.push('</g>');
+      if (a.def.label) out.push(`<text x="${f(x(a.tc) + 8)}" y="${R.sig - AMP_SIG - 4}" font-size="13" fill="${C.sig}">${esc(loc(a.def.label))}</text>`);
+    }
+    // marks (dashed verticals) and arrows (shot 0)
+    for (const m of S.marks) {
+      const col = C[m.style] || C.te, yb = Y_LEVEL[Math.min(1, m.level || 0)];
+      out.push(`<line x1="${f(x(m.t))}" y1="${R.rf - 24}" x2="${f(x(m.t))}" y2="${yb}" stroke="${col}" stroke-width="1" stroke-dasharray="4 3"/>`);
+      if (m.label) out.push(`<text x="${f(x(m.t) + 4)}" y="${R.rf + 18}" font-size="13" font-weight="600" fill="${col}">${markup(loc(m.label), 13)}</text>`);
+    }
+    for (const a of S.arrows) {
+      const col = C[a.style] || C.te, y = Y_LEVEL[Math.min(1, a.level || 0)], ps = pieces(L, S, a.t, a.t1);
+      ps.forEach((pc, i) => out.push(`<line x1="${f(x(pc.t0))}" y1="${y}" x2="${f(x(pc.t1))}" y2="${y}" stroke="${col}" stroke-width="4"${pc.dashed ? ' stroke-dasharray="6 6"' : ''}${i === 0 ? ` marker-start="url(#ah_${a.style || 'te'})"` : ''}${i === ps.length - 1 ? ` marker-end="url(#ah_${a.style || 'te'})"` : ''}/>`));
+      out.push(`<text x="${f((x(a.t) + x(a.t1)) / 2)}" y="${y + 22}" text-anchor="middle" font-size="20" font-weight="700" fill="${col}">${markup(loc(a.label), 20)}${a.def.sub ? `<tspan font-size="11" font-weight="400" dx="6">${esc(loc(a.def.sub))}</tspan>` : ''}</text>`);
+    }
+    // scale bar, cursor
+    const sx1 = W - RIGHT - 10 * S_PX, sx2 = W - RIGHT, ysb = Y_LEVEL[1];
+    out.push(`<line x1="${f(sx1)}" y1="${ysb}" x2="${f(sx2)}" y2="${ysb}" stroke="${C.text}" stroke-width="1.5"/><line x1="${f(sx1)}" y1="${ysb - 4}" x2="${f(sx1)}" y2="${ysb + 4}" stroke="${C.text}" stroke-width="1.5"/><line x1="${f(sx2)}" y1="${ysb - 4}" x2="${f(sx2)}" y2="${ysb + 4}" stroke="${C.text}" stroke-width="1.5"/>`);
+    out.push(`<text x="${f((sx1 + sx2) / 2)}" y="${ysb + 16}" text-anchor="middle" font-size="11" fill="${C.text}">${lab.scale}</text>`);
+    const cx = opts.cursorT == null ? GUT : x(opts.cursorT);
+    out.push(`<g id="cursor" transform="translate(${f(cx)},0)" style="${opts.cursorT == null && !opts.showCursor ? 'display:none' : ''}"><polygon points="-6,36 6,36 0,44" fill="${C.cursor}"/><line x1="0" y1="42" x2="0" y2="${H - 8}" stroke="${C.cursor}" stroke-width="1.6"/></g>`);
+    out.push('</svg>');
+    return { svg: out.join('\n'), L, bandX, bandW, colors: C };
+  }
+  function SeqIndex(sim, t) { const a = sim.times; let lo = 0, hi = a.length - 1; if (t <= a[0]) return 0; if (t >= a[hi]) return hi; while (hi - lo > 1) { const m = (lo + hi) >> 1; if (a[m] <= t) lo = m; else hi = m; } return (t - a[lo] < a[hi] - t) ? lo : hi; }
+  return { build, layout, markup, phaseColor, ROWS, COLORS: C };
+});
+</script>
+<script>const TISSUES = {"gm":{"name":{"pt":"subst. cinzenta","en":"gray matter"},"pd":0.85,"T1":1300,"T2":100,"color":"#8f8f8f"},"wm":{"name":{"pt":"subst. branca","en":"white matter"},"pd":0.7,"T1":850,"T2":80,"color":"#9fd0f3"},"csf":{"name":{"pt":"líquor","en":"CSF"},"pd":1.0,"T1":4000,"T2":2000,"color":"#2457c5"},"fat":{"name":{"pt":"gordura","en":"fat"},"pd":0.9,"T1":380,"T2":130,"color":"#f0c244"},"bone":{"name":{"pt":"osso cortical","en":"cortical bone"},"pd":0.0,"T1":1000,"T2":1,"color":"#efe8d6"},"air":{"name":{"pt":"ar","en":"air"},"pd":0.0,"T1":1000,"T2":1,"color":"#000000"},"lesion":{"name":{"pt":"lesão","en":"lesion"},"pd":0.9,"T1":1500,"T2":200,"color":"#d8413c"}};</script>
+<script>const SEQUENCES = [{"id":"se","format":"didactic-mri-sequence/1","name":{"pt":"Spin Echo","en":"Spin Echo"},"subtitle":{"pt":"um exemplo de sequência de pulsos, e o sinal de RF gerado","en":"an example of a pulse sequence, and the RF signal it generates"},"lead":{"pt":"Um 90° e um 180° por repetição; uma linha k_y por TR, N TRs. TE curto e TR longo dão ponderação em densidade de prótons; TE longo, em T2; TR curto, em T1. Fatia já selecionada; matriz N×N no plano xy, um isocromato por pixel, referencial girante. Arraste sobre o diagrama para percorrer o tempo.","en":"One 90° and one 180° per repetition; one k_y line per TR, N TRs. Short TE and long TR give proton-density weighting; long TE, T2; short TR, T1. Slice already selected; N×N array in the xy plane, one isochromat per pixel, rotating frame. Drag across the diagram to scrub through time."},"relax":{"T1":80,"T2":60},"phantom":"squareAir","params":[{"id":"TE","label":"TE","min":22,"max":200,"step":2,"default":32,"unit":"ms"},{"id":"TR","label":"TR","min":100,"max":4000,"step":50,"default":2000,"unit":"ms"},{"id":"spoiler","type":"checkbox","default":true,"label":{"pt":"zerar M⊥ ao fim do TR (spoiler ideal)","en":"zero M⊥ at end of TR (ideal spoiler)"}}],"constants":{"w":5,"tLead":2,"tauEnc":6,"tauRo":12},"tables":{"pe":"range(HALF, -HALF, -1)"},"shots":"N","TR":"TR","vars":{"Apre":"N/2","t90":"tLead + w/2","tEnc":"tLead + w","t180":"t90 + TE/2","tEcho":"t90 + TE"},"shotVars":{"step":"pe[n]"},"shotLabel":"TR ${n+1} · G_pe = ${+step} → k_y = ${+(-step)}","events":[{"type":"rf","t":"tLead","dur":"w","flip":90,"axis":"y","desc":{"pt":"pulso de 90° (rotação em torno de y)","en":"90° pulse (rotation about y)"}},{"type":"grad","axis":"x","t":"tEnc","dur":"tauEnc","area":"Apre","desc":{"pt":"pré-fase de leitura (Gfe): kₓ vai a +${N/2}","en":"readout prephaser (Gfe): kₓ goes to +${N/2}"}},{"type":"grad","axis":"y","t":"tEnc","dur":"tauEnc","area":"step","label":"${+step}","ghost":"pe","desc":{"pt":"codificação de fase (Gpe): k_y vai a ${+step}","en":"phase encoding (Gpe): k_y goes to ${+step}"}},{"type":"rf","t":"t180 - w/2","dur":"w","flip":180,"axis":"x","refocus":true,"desc":{"pt":"pulso de 180° (rotação em torno de x): fases invertidas, k → −k","en":"180° pulse (rotation about x): phases reversed, k → −k"}},{"type":"grad","axis":"x","t":"tEcho - tauRo/2","dur":"tauRo","area":"N","desc":{"pt":"leitura: Gfe varre kₓ de ${-N/2} a +${N/2}","en":"readout: Gfe sweeps kₓ from ${-N/2} to +${N/2}"}},{"type":"adc","t":"tEcho - tauRo/2","dur":"tauRo","n":"N","label":"SE","desc":{"pt":"amostras em kₓ = ${-HALF}…+${HALF}","en":"samples at kₓ = ${-HALF}…+${HALF}"}},{"type":"spoil","t":"TR","if":"spoiler"},{"type":"arrow","t":"t90","to":"tEcho","label":"T_E","style":"te","level":0},{"type":"arrow","t":"t90","to":"TR + t90","label":"T_R","style":"tr","level":1},{"type":"mark","t":"t90","style":"te"},{"type":"mark","t":"t180","label":"T_E/2","style":"te"},{"type":"mark","t":"tEcho","label":"T_E","style":"te"}],"notes":{"pt":["Sequência: 90° em torno de y; pré-fasador de leitura (+N/2 Δk) e codificação de fase simultâneos, antes do 180°; 180° em torno de x (k → −k); leitura (+N Δk, kₓ de −N/2 a +N/2) com o eco no centro. G_pe desce um passo por TR (de +(N−1)/2 a −(N−1)/2) e o 180° inverte o sinal: o espaço k enche de baixo para cima.","Pré-fasar antes do 180° roda em paralelo com a codificação de fase (TE mínimo menor) e deixa o FID de um 180° imperfeito coerente só na borda da janela; um lobo depois do 180° o refocalizaria sobre o eco.","Spoiler: num scanner, um gradiente forte ao fim do TR desfasa a magnetização transversal que sobrou do decaimento T2, para que o 90° seguinte não a leve ao eixo z, onde o 180° seguinte a refocalizaria como eco estimulado espúrio. A caixa idealiza isso como M⊥ → 0. Com os tecidos reais e TR = 2000 ms o resíduo é desprezível e desmarcar não muda nada visível; o efeito aparece com T1/T2 globais, T2 = ∞ ou TR ≲ 2·T2.","A partir do 2º TR a magnetização longitudinal disponível é a recuperada, não M₀; é a origem do pequeno resíduo da reconstrução junto com o decaimento T2 ao longo da janela de leitura."],"en":["Sequence: 90° about y; readout prephaser (+N/2 Δk) and phase encoding simultaneous, before the 180°; 180° about x (k → −k); readout (+N Δk, kₓ from −N/2 to +N/2) with the echo at the center. G_pe steps down one unit per TR (from +(N−1)/2 to −(N−1)/2) and the 180° flips the sign: k-space fills bottom-up.","Prephasing before the 180° runs in parallel with phase encoding (shorter minimum TE) and leaves the FID of an imperfect 180° coherent only at the edge of the window; a lobe after the 180° would refocus it onto the echo.","Spoiler: in a scanner, a strong gradient at the end of the TR dephases the transverse magnetization left after T2 decay, so the next 90° does not carry it to the z axis, where the following 180° would refocus it as a spurious stimulated echo. The box idealizes this as M⊥ → 0. With real tissues and TR = 2000 ms the leftover is negligible and unchecking changes nothing visible; the effect shows with global T1/T2, T2 = ∞ or TR ≲ 2·T2.","From the 2nd TR on the available longitudinal magnetization is the recovered one, not M₀; together with T2 decay across the readout window it is the origin of the small reconstruction residual."]}},{"id":"fse","format":"didactic-mri-sequence/1","name":{"pt":"Fast Spin Echo","en":"Fast Spin Echo"},"subtitle":{"pt":"um trem de ecos, uma linha de k por eco","en":"an echo train, one k line per echo"},"lead":{"pt":"Um 90° e N pulsos de 180° (CPMG); cada eco adquire uma linha k_y, as N linhas numa única excitação. Matriz N×N no plano xy, um isocromato por pixel, referencial girante. Arraste sobre o diagrama para percorrer o tempo.","en":"One 90° and N 180° pulses (CPMG); each echo acquires one k_y line, all N lines from a single excitation. N×N array in the xy plane, one isochromat per pixel, rotating frame. Drag across the diagram to scrub through time."},"relax":{"T1":500,"T2":80},"phantom":"squareAir","envelope":true,"params":[{"id":"ESP","label":"ESP","min":26,"max":60,"step":2,"default":26,"unit":"ms","title":{"pt":"espaçamento entre ecos","en":"echo spacing"}},{"id":"order","type":"select","default":"linear","label":{"pt":"ordem de k_y","en":"k_y order"},"options":[{"value":"linear","label":{"pt":"linear (−(N−1)/2…+(N−1)/2)","en":"linear (−(N−1)/2…+(N−1)/2)"},"values":{"pe":"range(-HALF, HALF, 1)"}},{"value":"centric","label":{"pt":"centro primeiro","en":"center first"},"values":{"pe":"centric(HALF)"}},{"value":"centerLast","label":{"pt":"centro por último","en":"center last"},"values":{"pe":"rev(centric(HALF))"}}]}],"constants":{"w":5,"tLead":2,"tauPre":6,"tauPe":4,"tauRo":12,"tTail":30},"shots":1,"vars":{"Apre":"N/2","NECHO":"N","t90":"tLead + w/2","tActive":"t90 + NECHO*ESP + tauRo/2 + tauPe","iTE":"indexOf(pe, 0)","TEeff":"(iTE + 1)*ESP"},"TR":"tActive + tTail","events":[{"type":"rf","t":"tLead","dur":"w","flip":90,"axis":"y","desc":{"pt":"pulso de 90° (rotação em torno de y)","en":"90° pulse (rotation about y)"}},{"type":"grad","axis":"x","t":"tLead + w","dur":"tauPre","area":"Apre","desc":{"pt":"pré-fase de leitura (Gfe): kₓ vai a +${N/2}","en":"readout prephaser (Gfe): kₓ goes to +${N/2}"}},{"type":"repeat","count":"NECHO","var":"i","vars":{"t180":"t90 + ESP/2 + i*ESP","tEcho":"t90 + (i + 1)*ESP","step":"pe[i]","roStart":"tEcho - tauRo/2"},"events":[{"type":"band","t":"t180","label":{"pt":"eco ${i+1} · k_y = ${+step}","en":"echo ${i+1} · k_y = ${+step}"}},{"type":"rf","t":"t180 - w/2","dur":"w","flip":180,"axis":"x","refocus":true,"desc":{"pt":"pulso de 180° (rotação em torno de x): fases invertidas, k → −k; kₓ = ${-N/2}","en":"180° pulse (rotation about x): phases reversed, k → −k; kₓ = ${-N/2}"}},{"type":"grad","axis":"y","t":"roStart - tauPe","dur":"tauPe","area":"step","label":"${+step}","desc":{"pt":"codificação de fase (Gpe): k_y vai a ${+step}","en":"phase encoding (Gpe): k_y goes to ${+step}"}},{"type":"grad","axis":"x","t":"roStart","dur":"tauRo","area":"N","desc":{"pt":"leitura: Gfe varre kₓ de ${-N/2} a +${N/2}","en":"readout: Gfe sweeps kₓ from ${-N/2} to +${N/2}"}},{"type":"adc","t":"roStart","dur":"tauRo","n":"N","desc":{"pt":"amostras em kₓ = ${-HALF}…+${HALF}","en":"samples at kₓ = ${-HALF}…+${HALF}"}},{"type":"grad","axis":"y","t":"roStart + tauRo","dur":"tauPe","area":"-step","desc":{"pt":"rebobinador de Gpe: k_y volta a 0 antes do próximo 180°","en":"Gpe rewinder: k_y back to 0 before the next 180°"}}]},{"type":"arrow","t":"t90 + ESP/2","to":"t90 + 3*ESP/2","label":"ESP","sub":{"pt":"espaçamento entre ecos","en":"echo spacing"},"style":"esp","level":0},{"type":"arrow","t":"t90","to":"t90 + TEeff","label":"T_{E,ef}","style":"te","level":1},{"type":"mark","t":"t90","style":"te","level":1},{"type":"mark","t":"t90 + TEeff","style":"te","level":1},{"type":"mark","t":"t90 + ESP/2","style":"esp"},{"type":"mark","t":"t90 + 3*ESP/2","style":"esp"}],"notes":{"pt":["Sequência: 90° em torno de y, pré-fasador de leitura (+N/2 Δk) antes do primeiro 180°, depois um trem de N pulsos de 180° em torno de x (condição CPMG: o eixo do pulso de refocalização coincide com a magnetização excitada), espaçamento ESP. Cada eco adquire uma linha k_y: passo de Gpe logo antes da leitura, leitura (+N Δk), rebobinador (−passo) que devolve k_y a 0 antes do próximo 180°. As leituras se equilibram sozinhas através dos 180°: kₓ = +N/2 ao fim de uma leitura vira −N/2 no pulso seguinte.","A linha tracejada no sinal é a envoltória e^{−t/T2} do máximo possível (|S| ≤ ΣM₀); só o eco com k_y = 0 a toca, os outros são componentes de Fourier menores.","Cada linha é adquirida com um TE diferente, logo com peso e^{−TE_n/T2} diferente: o decaimento vira um filtro W(k_y) multiplicando o espaço k, e a imagem reconstruída é a convolução do objeto com a transformada do filtro. A ordem de k_y decide qual eco cai em k_y = 0 (TE efetivo, a seta verde): linear → ESP·(N+1)/2, centro primeiro → ESP (filtro passa-baixa, borramento em y), centro por último → N·ESP (realce de bordas e ringing). A Fourier reversa mostra cada modo com a amplitude que o T2 deixou.","Com 180° exatos, k → −k em cada pulso marca a trajetória. Outros ângulos de refocalização não são expostos: com um isocromato por pixel, caminhos de coerência desfasados por múltiplos de N Δk se repetem exatamente (aliasing da grade de N pontos) e seriam mostrados como refocalizados."],"en":["Sequence: 90° about y, readout prephaser (+N/2 Δk) before the first 180°, then a train of N 180° pulses about x (CPMG: the refocusing axis coincides with the excited magnetization), echo spacing ESP. Each echo acquires one k_y line: Gpe step right before the readout, readout (+N Δk), rewinder (−step) returning k_y to 0 before the next 180°. The readouts balance themselves across the 180°s: kₓ = +N/2 at the end of a readout becomes −N/2 at the next pulse.","The dashed line in the signal row is the envelope e^{−t/T2} of the largest possible signal (|S| ≤ ΣM₀); only the echo with k_y = 0 touches it, the others are smaller Fourier components.","Each line is acquired at a different TE, hence with a different weight e^{−TE_n/T2}: the decay becomes a filter W(k_y) multiplying k-space, and the reconstructed image is the object convolved with the filter's transform. The k_y order decides which echo lands on k_y = 0 (effective TE, the green arrow): linear → ESP·(N+1)/2, center first → ESP (low-pass filter, blurring along y), center last → N·ESP (edge enhancement and ringing). The inverse Fourier shows each mode with the amplitude T2 left it.","With exact 180°s, k → −k at every pulse marks the trajectory. Other refocusing angles are not exposed: with one isochromat per pixel, coherence pathways dephased by multiples of N Δk repeat exactly (aliasing of the N-point grid) and would be shown as refocused."]}},{"id":"flair","format":"didactic-mri-sequence/1","name":{"pt":"FLAIR","en":"FLAIR"},"subtitle":{"pt":"inversão–recuperação com leitura fast spin echo; TI escolhido para anular o líquor","en":"inversion recovery with a fast spin-echo readout; TI chosen to null CSF"},"lead":{"pt":"Um 180° de inversão, espera TI, depois o fast spin echo (90° + N pulsos de 180°, uma linha k_y por eco). Com TI = T1·ln 2 de um tecido, esse tecido tem M_z = 0 no 90° e não dá sinal. Use o objeto \"cérebro\" (tecidos com T1 e T2 próprios); com os outros objetos T1 e T2 vêm dos cursores e o TI anula a imagem inteira.","en":"A 180° inversion, a wait TI, then the fast spin echo (90° + N 180° pulses, one k_y line per echo). With TI = T1·ln 2 of a tissue, that tissue has M_z = 0 at the 90° and gives no signal. Use the \"brain\" phantom (tissues with their own T1 and T2); with the other phantoms T1 and T2 come from the sliders and TI nulls the whole image."},"relax":{"T1":850,"T2":80},"phantom":"brain","envelope":false,"params":[{"id":"TI","label":"TI","min":50,"max":3500,"step":50,"default":2750,"unit":"ms","title":{"pt":"tempo de inversão (centro do 180° de inversão ao centro do 90°)","en":"inversion time (center of the inversion 180° to center of the 90°)"}},{"id":"ESP","label":"ESP","min":26,"max":60,"step":2,"default":26,"unit":"ms","title":{"pt":"espaçamento entre ecos","en":"echo spacing"}},{"id":"order","type":"select","default":"linear","label":{"pt":"ordem de k_y","en":"k_y order"},"options":[{"value":"linear","label":{"pt":"linear (−(N−1)/2…+(N−1)/2)","en":"linear (−(N−1)/2…+(N−1)/2)"},"values":{"pe":"range(-HALF, HALF, 1)"}},{"value":"centric","label":{"pt":"centro primeiro","en":"center first"},"values":{"pe":"centric(HALF)"}},{"value":"centerLast","label":{"pt":"centro por último","en":"center last"},"values":{"pe":"rev(centric(HALF))"}}]}],"constants":{"w":5,"tLead":2,"tauPre":6,"tauPe":4,"tauRo":12,"tTail":300},"shots":1,"vars":{"Apre":"N/2","NECHO":"N","tInv":"tLead + w/2","t90":"tInv + TI","tActive":"t90 + NECHO*ESP + tauRo/2 + tauPe","iTE":"indexOf(pe, 0)","TEeff":"(iTE + 1)*ESP"},"TR":"tActive + tTail","events":[{"type":"rf","t":"tLead","dur":"w","flip":180,"axis":"x","desc":{"pt":"180° de inversão: M_z → −M_z em todos os pixels","en":"inversion 180°: M_z → −M_z in every pixel"}},{"type":"rf","t":"t90 - w/2","dur":"w","flip":90,"axis":"y","desc":{"pt":"pulso de 90°: o M_z recuperado durante TI vai para o plano; quem tem M_z = 0 não dá sinal","en":"90° pulse: the M_z recovered during TI goes to the plane; whoever has M_z = 0 gives no signal"}},{"type":"grad","axis":"x","t":"t90 + w/2","dur":"tauPre","area":"Apre","desc":{"pt":"pré-fase de leitura (Gfe): kₓ vai a +${N/2}","en":"readout prephaser (Gfe): kₓ goes to +${N/2}"}},{"type":"repeat","count":"NECHO","var":"i","vars":{"t180":"t90 + ESP/2 + i*ESP","tEcho":"t90 + (i + 1)*ESP","step":"pe[i]","roStart":"tEcho - tauRo/2"},"events":[{"type":"band","t":"t180","label":{"pt":"eco ${i+1} · k_y = ${+step}","en":"echo ${i+1} · k_y = ${+step}"}},{"type":"rf","t":"t180 - w/2","dur":"w","flip":180,"axis":"x","refocus":true,"desc":{"pt":"pulso de 180° (rotação em torno de x): fases invertidas, k → −k; kₓ = ${-N/2}","en":"180° pulse (rotation about x): phases reversed, k → −k; kₓ = ${-N/2}"}},{"type":"grad","axis":"y","t":"roStart - tauPe","dur":"tauPe","area":"step","label":"${+step}","desc":{"pt":"codificação de fase (Gpe): k_y vai a ${+step}","en":"phase encoding (Gpe): k_y goes to ${+step}"}},{"type":"grad","axis":"x","t":"roStart","dur":"tauRo","area":"N","desc":{"pt":"leitura: Gfe varre kₓ de ${-N/2} a +${N/2}","en":"readout: Gfe sweeps kₓ from ${-N/2} to +${N/2}"}},{"type":"adc","t":"roStart","dur":"tauRo","n":"N","desc":{"pt":"amostras em kₓ = ${-HALF}…+${HALF}","en":"samples at kₓ = ${-HALF}…+${HALF}"}},{"type":"grad","axis":"y","t":"roStart + tauRo","dur":"tauPe","area":"-step","desc":{"pt":"rebobinador de Gpe: k_y volta a 0 antes do próximo 180°","en":"Gpe rewinder: k_y back to 0 before the next 180°"}}]},{"type":"band","t":"tInv","label":{"pt":"inversão · TI = ${TI} ms","en":"inversion · TI = ${TI} ms"}},{"type":"arrow","t":"tInv","to":"t90","label":"T_I","style":"tr","level":1},{"type":"arrow","t":"t90","to":"t90 + TEeff","label":"T_{E,ef}","style":"te","level":0},{"type":"mark","t":"tInv","style":"tr","level":1},{"type":"mark","t":"t90","style":"tr","level":1}],"notes":{"pt":["Sequência: 180° de inversão (em torno de x; M⊥ é zero em repouso, só M_z é invertido), espera TI, e então o fast spin echo: 90°, pré-fasador, N pulsos de 180° com uma linha k_y por eco. Recuperação durante TI: M_z(TI) = M₀(1 − 2e^{−TI/T1}); zera em TI = T1·ln 2. Para o líquor (T1 ≈ 4000 ms) isso dá TI ≈ 2770 ms; substância branca (850 ms) e cinzenta (1300 ms) já recuperaram boa parte de M₀ e dão sinal. É o FLAIR: imagem ponderada em T2 com o líquor escuro, onde lesões periventriculares deixam de se esconder atrás do líquor brilhante.","Em TI menor que T1·ln 2 de um tecido, seu M_z no 90° é negativo: o sinal nasce com fase π (ciano no espaço k, e vetores apontando para −x nas esferas). A imagem é mostrada em módulo, como no scanner, então esse tecido aparece claro, não escuro: só o tecido com M_z = 0 some.","O intervalo TI (milhares de ms) aparece comprimido no diagrama, como as caudas de TR: o tracejado marca o trecho fora de escala. Desmarque \"comprimir TR\" para ver em escala.","Borramento do trem de ecos: cada eco perde e^{−ESP/T2} (28% para a substância branca com ESP = 26 ms); com N linhas o filtro em k_y tem largura ≈ N·ESP/(π·T2) pixels (≈ 0,9 pixel com N = 9), uma fração grande de uma imagem de N pixels. Com a ordem \"centro primeiro\" o filtro é passa-baixa e o líquor nulo reaparece cinza por borramento das vizinhanças; a ordem linear (padrão aqui) preserva muito melhor o módulo. Num scanner com 256 linhas o mesmo ESP/T2 borra uma fração de pixel.","Objetos: com \"cérebro\", cada pixel tem (M₀, T1, T2) do seu tecido; com \"T1/T2 globais\" marcado, TI = T1·ln 2 anula a imagem inteira."],"en":["Sequence: inversion 180° (about x; M⊥ is zero at rest, only M_z is inverted), a wait TI, then the fast spin echo: 90°, prephaser, N 180° pulses with one k_y line per echo. Recovery during TI: M_z(TI) = M₀(1 − 2e^{−TI/T1}); it crosses zero at TI = T1·ln 2. For CSF (T1 ≈ 4000 ms) that is TI ≈ 2770 ms; white (850 ms) and gray matter (1300 ms) have recovered most of M₀ and give signal. That is FLAIR: a T2-weighted image with dark CSF, where periventricular lesions stop hiding behind bright CSF.","At TI below a tissue's T1·ln 2, its M_z at the 90° is negative: the signal is born with phase π (cyan in k-space, vectors pointing to −x in the spheres). The image is shown as a magnitude, as on the scanner, so that tissue appears bright, not dark: only the tissue with M_z = 0 vanishes.","The TI interval (thousands of ms) is compressed in the diagram, like the TR tails: the dashed stretch is off scale. Uncheck \"compress TR\" to see it to scale.","Echo-train blurring: each echo loses e^{−ESP/T2} (28% for white matter with ESP = 26 ms); with N lines the k_y filter has a width ≈ N·ESP/(π·T2) pixels (≈ 0.9 pixel at N = 9), a large fraction of an N-pixel image. With \"center first\" the filter is low-pass and the nulled CSF reappears gray by blurring from its neighbors; linear order (the default here) preserves the magnitude far better. A 256-line scanner image with the same ESP/T2 blurs by a fraction of a pixel.","Phantoms: with \"brain\", each pixel has the (M₀, T1, T2) of its tissue; with \"global T1/T2\" checked, TI = T1·ln 2 nulls the whole image."]}}];</script>
+<script>
+(function () {
+'use strict';
+const $ = id => document.getElementById(id);
+const I18N = {
+  pt: {
+    play: '▶ Aquisição', pause: '❚❚ Pausar', reset: '⟲ Início', prev: '◀ evento', next: 'evento ▶', speed: 'velocidade',
+    phantom: 'objeto', squareAir: 'quadrado (cheio/vazio)', letterFAir: 'letra F (cheio/vazio)', uniform: 'uniforme (SC)', square: 'quadrado (SC sobre SB)', letterF: 'letra F (SC sobre SB)', ramp: 'rampa de M₀ (SC)', brain: 'cérebro', uniformDesc: '', 
+    modeDensity: 'intensidade', modePhase: 'intensidade + fase', modeTissue: 'tecido', relaxOverride: 'T1/T2 globais (ignorar tecidos)', tissueHdr: 'tecido: PD · T1 · T2 (ms, 3 T)', linear: 'intensidade linear (sem √)', compress: 'comprimir TR', loadseq: 'carregar sequência (.json)', copyseq: 'copiar JSON da sequência', lang: 'EN', copy: 'copiar SVG do diagrama', copied: 'copiado ✓', copyFail: 'falhou — selecione e copie',
+    tSpins: n => `Matriz ${n}×${n} de pixels (referencial girante)`, sSpinsDensity: 'cinza = densidade de prótons M₀ · vermelho: M · azul: M∥ (z) e M⊥ (xy)', sSpinsTissue: 'cor = tecido (T1, T2 e M₀ próprios) · vermelho: M · azul: M∥ (z) e M⊥ (xy)', sSpinsPhase: 'cor = fase de M⊥ · intensidade = |M⊥| · vermelho: M · azul: M∥ (z) e M⊥ (xy)',
+    tK: 'Espaço k (kₓ, k_y)', peDesc: 'codificação por fase', feDesc: 'codificação por frequência', envDesc: 'e<tspan dy="-5" font-size="8">−t/T2</tspan>',
+    fplay: '▶ Fourier reversa', fpause: '❚❚ Pausar', freset: '⟲ Início', fprev: '◀ modo', fnext: 'modo ▶', fspeed: 'velocidade', fspeedUnit: 'modos/s',
+    tImg: 'Imagem', tMode: 'Modo', tResid: 'Resíduo',
+    sImgIdle: '|Σ dos modos adicionados| (imagem em módulo, como no scanner) · branco = máximo da reconstrução completa',
+    sImg: (s, n, nm, np) => `|Σ de ${s}/${nm} modos| (módulo) · ${n}/${np} amostras · branco = máximo da reconstrução completa`,
+    sModeIdle: 'aguardando a Fourier reversa',
+    sModeDC: (z) => `modo (0, 0): constante · × |S(0,0)| = ${z} ΣM₀ (vermelho = real positivo)`,
+    sMode: (kx, ky, z, ph) => `modo (kₓ, k_y) = (${kx}, ${ky}) e (${-kx}, ${-ky}): cos[2π(kₓx + k_yy)/5 + φ], padrão normalizado, φ = ${ph}° · × |S(k) + S(−k)*| = ${z} ΣM₀ (soma do par, real positiva: vermelho)`,
+    lGain: 'ganho do resíduo', sResid: (rmax, g) => `resíduo = imagem/c − imagem ideal, onde a imagem ideal é |M⊥| de cada pixel no eco central (o contraste que a sequência pretende, sem o filtro do espaço k) e c um fator de escala por mínimos quadrados · mesma escala de cinza da imagem, cinza médio = 0, ganho ×${g} · máx |Δ| = ${rmax} do máximo ideal`,
+    sResid0: 'resíduo = imagem/c − imagem ideal · ≈ 0 (reconstrução exata)',
+    fIdle: 'pronto (usa as amostras já adquiridas)', fRun: (s, kx, ky, nm) => `modo ${s}/${nm} · (kₓ, k_y) = ±(${kx}, ${ky})`, fDone: nm => `${nm}/${nm} · reconstrução completa`,
+    legend: 'cor = fase de S(kₓ,k_y) · intensidade = |S|', legendLin: 'cor = fase de S(kₓ,k_y) · intensidade = |S| (linear)',
+    seg: { rest: 'repouso: M₀ ao longo de +z', free: 'evolução livre (decaimento T2, recuperação T1)', tail: 'relaxação até o fim da repetição', end: 'aquisição completa', rf: (a, ax) => `pulso de ${a}° em torno de ${ax}`, grad: ax => `gradiente em ${ax}`, adc: 'leitura' },
+    status: (t, band, kx, ky, seg) => `t = <b>${t}</b> ms · ${band}k = (<b>${kx}</b>, <b>${ky}</b>) · ${seg}`,
+    phase: 'fase', mag: '|S|',
+    errSeq: 'sequência inválida: ', loaded: 'sequência carregada: ', copied2: 'copiado ✓',
+    last: (kx, ky, mag, ph) => `último: S(${kx}, ${ky}) = ${mag} ∠ ${ph}°`,
+    tEq: 'Equações: o que é calculado em cada painel',
+    eqs: [
+      ['Diagrama da sequência', [
+        'Espaço k percorrido pelos gradientes: <span class="m">k<sub>x</sub>(t) = (γ/2π) ∫<sub>0</sub><sup>t</sup> G<sub>x</sub>(t′) dt′</span>, idem em y; em unidades de Δk = 1/FOV, a área de cada lobo é o Δk que ele move. Num pulso de refocalização ideal, <span class="m">k → −k</span> no centro do pulso.',
+        'Sinal: <span class="m">S(t) = Σ<sub>p</sub> [M<sub>x,p</sub>(t) + i M<sub>y,p</sub>(t)]</span> sobre os N² pixels (parte real em azul, |S| como envoltória). As amostras são tomadas nos centros dos N intervalos de dwell da leitura, onde k<sub>x</sub> é inteiro.'
+      ]],
+      ['Matriz de pixels', [
+        'Equações de Bloch no referencial girante, pixel p em (x<sub>p</sub>, y<sub>p</sub>), com <span class="m">M<sub>⊥</sub> = M<sub>x</sub> + i M<sub>y</sub></span>: <span class="m">dM<sub>⊥</sub>/dt = −i·2π(G<sub>x</sub>x<sub>p</sub> + G<sub>y</sub>y<sub>p</sub>)(γ/2π)·M<sub>⊥</sub> − M<sub>⊥</sub>/T2</span>, <span class="m">dM<sub>z</sub>/dt = (M<sub>0</sub> − M<sub>z</sub>)/T1</span>. Num passo em que k avança (Δk<sub>x</sub>, Δk<sub>y</sub>): <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub> e<sup>−iΔφ</sup>, Δφ = 2π(Δk<sub>x</sub>x<sub>p</sub> + Δk<sub>y</sub>y<sub>p</sub>)/N</span>; relaxação: <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub>e<sup>−Δt/T2</sup>, M<sub>z</sub> → M<sub>0</sub> + (M<sub>z</sub> − M<sub>0</sub>)e<sup>−Δt/T1</sup></span>.',
+        'Pulsos (duros): rotação de ângulo θ em torno do eixo do pulso; 90° em y: <span class="m">(M<sub>x</sub>, M<sub>z</sub>) → (M<sub>z</sub>, −M<sub>x</sub>)</span> (+z → +x); 180° de inversão em repouso: <span class="m">M<sub>z</sub> → −M<sub>z</sub></span>, e depois <span class="m">M<sub>z</sub>(t) = M<sub>0</sub>(1 − 2e<sup>−t/T1</sup>)</span>, nulo em t = T1·ln 2; 180° em x: <span class="m">(M<sub>y</sub>, M<sub>z</sub>) → (−M<sub>y</sub>, −M<sub>z</sub>)</span>, isto é, <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub><sup>*</sup></span>. O ângulo cresce linearmente ao longo da largura do pulso, sem relaxação nem gradientes nesse intervalo.',
+        'Cor da célula (modo intensidade + fase): matiz = <span class="m">arg M<sub>⊥</sub></span>, intensidade = <span class="m">√(|M<sub>⊥</sub>|/M<sub>0,max</sub>)</span> (ou linear). Modo intensidade: cinza = M<sub>0</sub>.'
+      ]],
+      ['Espaço k', [
+        'Cada amostra é <span class="m">S(t)</span> no instante em que <span class="m">k(t) = (k<sub>x</sub>, k<sub>y</sub>)</span> é inteiro. Como cada pixel carrega a fase <span class="m">−2π k·r<sub>p</sub>/N</span> acumulada pelos gradientes, <span class="m">S(k) = Σ<sub>p</sub> m<sub>p</sub> e<sup>−2πi(k<sub>x</sub>x<sub>p</sub> + k<sub>y</sub>y<sub>p</sub>)/N</sup></span>: a DFT direta das magnetizações, com <span class="m">m<sub>p</sub> = M<sub>0,p</sub>·(M<sub>z</sub> disponível/M<sub>0</sub>)·e<sup>−TE<sub>linha</sub>/T2</sup></span> para pulsos ideais.',
+        'Cor: matiz = <span class="m">arg S(k)</span> (0 = vermelho, π/2 = verde-amarelo, π = ciano, −π/2 = azul-violeta), intensidade = <span class="m">√(|S(k)|/ΣM<sub>0</sub>)</span> (ou linear), a mesma codificação da bola da legenda. O marcador é k(t); o salto tracejado é o k → −k do 180°.'
+      ]],
+      ['Imagem real (Fourier reversa)', [
+        '<span class="m">ρ(r) = (1/N²) Σ<sub>k</sub> S(k) e<sup>+2πi k·r/N</sup></span>. Agrupando cada par conjugado {k, −k}: <span class="m">Z<sub>k</sub> = S(k) + S(−k)<sup>*</sup></span>, <span class="m">A<sub>k</sub> = |Z<sub>k</sub>|/N²</span>, <span class="m">φ<sub>k</sub> = arg Z<sub>k</sub></span>, e a contribuição real do par é <span class="m">A<sub>k</sub> cos(2π k·r/N + φ<sub>k</sub>)</span>; o termo DC é <span class="m">|S(0)|/N² · cos(arg S(0))</span>. Os (N²+1)/2 modos entram em ordem crescente de |k|; a soma é real por construção e a imagem mostra o seu módulo, como o scanner (tecidos com M<sub>z</sub> &lt; 0 no 90° aparecem claros). Branco = máximo da reconstrução completa.'
+      ]],
+      ['Modo / Resíduo', [
+        'Modo: o padrão normalizado <span class="m">cos(2π k·r/N + φ<sub>k</sub>)</span> (cinza médio = 0); o quadradinho "×" é |Z<sub>k</sub>| na codificação do espaço k (sempre fase 0).',
+        'Resíduo: <span class="m">|ρ|/c − ρ<sub>ideal</sub></span>, com <span class="m">ρ<sub>ideal,p</sub> = |M<sub>⊥,p</sub>(t<sub>k=0</sub>)|</span> (o sinal de cada pixel no instante da amostra central: o contraste que a sequência pretende) e <span class="m">c = Σ<sub>p</sub> |ρ<sub>p</sub>|ρ<sub>ideal,p</sub> / Σ<sub>p</sub> ρ<sub>ideal,p</sub><sup>2</sup></span> (mínimos quadrados), mostrado na escala de cinza da imagem, cinza médio = 0, multiplicado pelo ganho. O que sobra é o efeito do filtro do espaço k: pesos desiguais entre linhas e truncamento.',
+        'Quando as linhas k<sub>y</sub> têm TE diferentes (fast spin echo), <span class="m">S<sub>med</sub>(k) = W(k<sub>y</sub>) S(k)</span> com <span class="m">W = e<sup>−TE(k<sub>y</sub>)/T2</sup></span>, logo <span class="m">ρ<sub>rec</sub> = w ∗ ρ</span>, <span class="m">w = F<sup>−1</sup>[W]</span>: o resíduo é o efeito dessa convolução.'
+      ]]
+    ],
+    notes: 'Modelo: o que é física e o que é simplificação didática',
+    noteList: [
+      'Modelo (comum a todas as sequências): referencial girante em ω₀, Δφ = 2π(Δkₓ·x + Δk_y·y)/N com x, y ∈ {−(N−1)/2,…,(N−1)/2} (N ímpar, seletor no painel), m → m·e^{−iΔφ}: as amostras são a DFT direta das magnetizações dos pixels. Pulsos duros, com o ângulo crescendo linearmente ao longo da largura só para a rotação ser visível; relaxação suspensa durante os pulsos. Relaxação: M⊥ ∝ e^{−t/T2}, M_z → M₀ + (M_z − M₀)e^{−t/T1}; cursores em ∞ desligam. Sinal S = Σ(Mₓ + iM_y) sobre os N² pixels (não normalizado). Até N = 9 cada pixel mostra a esfera de Bloch; acima, só a cor da célula e, até N = 15, a seta de M⊥. A seleção de fatia é tomada como já feita.',
+      'Objetos são mapas de tecidos: cada pixel tem um rótulo (subst. cinzenta, subst. branca, líquor, gordura, osso cortical, ar, lesão) que fixa sua densidade de prótons, T1 e T2 (dicionário tissues.json, valores aproximados a 3 T), mais um fator opcional de densidade (a rampa). Os objetos "cheio/vazio" são subst. cinzenta sobre ar: o caso mais simples, insensível a TE e TR, em que a intensidade do sinal se lê diretamente da soma das setas transversais dos pixels cheios. Os objetos "SC sobre SB" têm fundo com sinal, e aí o contraste entre figura e fundo depende da sequência (TE, TR, TI). A caixa "T1/T2 globais" substitui os valores dos tecidos pelos cursores, para experimentos como T2 = ∞.',
+      'Espaço k: cada célula é um intervalo de amostragem (dwell); a amostra fica no centro e a varredura de leitura cobre as células inteiras (−N/2 a +N/2). A cor é a fase de S e a intensidade |S|, na mesma codificação da bola da legenda. Em pulsos de refocalização ideais k → −k.',
+      'Fourier reversa: imagem(r) = (1/N²) Σ_k S(k) e^{+2πi k·r/N}; cada par conjugado {k, −k} dá uma onda real A cos(2π k·r/N + φ); (N²+1)/2 modos (DC + (N²−1)/2 pares) em ordem crescente de |k|. Resíduo = imagem/c − imagem ideal (|M⊥| de cada pixel no eco central), com c por mínimos quadrados: mede o filtro do espaço k, não o contraste.',
+      'Sequências são arquivos JSON (formato didactic-mri-sequence/1): parâmetros, constantes, variáveis derivadas e uma lista de eventos por repetição (rf, grad, adc, spoil, repeat, band, arrow, mark), com tempos e áreas como expressões. "Copiar JSON da sequência" exporta a sequência atual; "carregar sequência" lê uma do disco. As expressões são avaliadas como JavaScript: carregue só arquivos de origem conhecida.',
+      'Teclado: espaço = tocar/pausar, ← → = evento anterior/seguinte, Home = início.'
+    ]
+  },
+  en: {
+    play: '▶ Acquire', pause: '❚❚ Pause', reset: '⟲ Start', prev: '◀ event', next: 'event ▶', speed: 'speed',
+    phantom: 'phantom', squareAir: 'square (filled/empty)', letterFAir: 'letter F (filled/empty)', uniform: 'uniform (GM)', square: 'square (GM on WM)', letterF: 'letter F (GM on WM)', ramp: 'M₀ ramp (GM)', brain: 'brain', 
+    modeDensity: 'intensity', modePhase: 'intensity + phase', modeTissue: 'tissue', relaxOverride: 'global T1/T2 (ignore tissues)', tissueHdr: 'tissue: PD · T1 · T2 (ms, 3 T)', linear: 'linear intensity (no √)', compress: 'compress TR', loadseq: 'load sequence (.json)', copyseq: 'copy sequence JSON', lang: 'PT', copy: 'copy diagram SVG', copied: 'copied ✓', copyFail: 'failed — select and copy',
+    tSpins: n => `${n}×${n} pixel array (rotating frame)`, sSpinsDensity: 'gray = proton density M₀ · red: M · blue: M∥ (z) and M⊥ (xy)', sSpinsTissue: 'color = tissue (own T1, T2 and M₀) · red: M · blue: M∥ (z) and M⊥ (xy)', sSpinsPhase: 'color = phase of M⊥, intensity = |M⊥| · red: M · blue: M∥ (z) and M⊥ (xy)',
+    tK: 'k-space (kₓ, k_y)', peDesc: 'phase encoding', feDesc: 'frequency encoding', envDesc: 'e<tspan dy="-5" font-size="8">−t/T2</tspan>',
+    fplay: '▶ Inverse Fourier', fpause: '❚❚ Pause', freset: '⟲ Start', fprev: '◀ mode', fnext: 'mode ▶', fspeed: 'speed', fspeedUnit: 'modes/s',
+    tImg: 'Image', tMode: 'Mode', tResid: 'Residual',
+    sImgIdle: '|Σ of the added modes| (magnitude image, as on the scanner) · white = maximum of the full reconstruction',
+    sImg: (s, n, nm, np) => `|Σ of ${s}/${nm} modes| (magnitude) · ${n}/${np} samples · white = maximum of the full reconstruction`,
+    sModeIdle: 'waiting for the inverse Fourier',
+    sModeDC: (z) => `mode (0, 0): constant · × |S(0,0)| = ${z} ΣM₀ (red = real positive)`,
+    sMode: (kx, ky, z, ph) => `mode (kₓ, k_y) = (${kx}, ${ky}) and (${-kx}, ${-ky}): cos[2π(kₓx + k_yy)/5 + φ], normalized pattern, φ = ${ph}° · × |S(k) + S(−k)*| = ${z} ΣM₀ (pair sum, real positive: red)`,
+    lGain: 'residual gain', sResid: (rmax, g) => `residual = image/c − ideal image, where the ideal image is each pixel's |M⊥| at the central echo (the contrast the sequence intends, without the k-space filter) and c a least-squares scale factor · same gray scale as the image, mid-gray = 0, gain ×${g} · max |Δ| = ${rmax} of the ideal maximum`,
+    sResid0: 'residual = image/c − ideal image · ≈ 0 (exact reconstruction)',
+    fIdle: 'ready (uses the samples acquired so far)', fRun: (s, kx, ky, nm) => `mode ${s}/${nm} · (kₓ, k_y) = ±(${kx}, ${ky})`, fDone: nm => `${nm}/${nm} · reconstruction complete`,
+    legend: 'color = phase of S(kₓ,k_y) · intensity = |S|', legendLin: 'color = phase of S(kₓ,k_y) · intensity = |S| (linear)',
+    seg: { rest: 'rest: M₀ along +z', free: 'free evolution (T2 decay, T1 recovery)', tail: 'relaxation to the end of the repetition', end: 'acquisition complete', rf: (a, ax) => `${a}° pulse about ${ax}`, grad: ax => `gradient along ${ax}`, adc: 'readout' },
+    status: (t, band, kx, ky, seg) => `t = <b>${t}</b> ms · ${band}k = (<b>${kx}</b>, <b>${ky}</b>) · ${seg}`,
+    phase: 'phase', mag: '|S|',
+    errSeq: 'invalid sequence: ', loaded: 'sequence loaded: ', copied2: 'copied ✓',
+    last: (kx, ky, mag, ph) => `last: S(${kx}, ${ky}) = ${mag} ∠ ${ph}°`,
+    tEq: 'Equations: what is computed in each panel',
+    eqs: [
+      ['Sequence diagram', [
+        'k-space traversed by the gradients: <span class="m">k<sub>x</sub>(t) = (γ/2π) ∫<sub>0</sub><sup>t</sup> G<sub>x</sub>(t′) dt′</span>, likewise in y; in units of Δk = 1/FOV, the area of each lobe is the Δk it moves. At an ideal refocusing pulse, <span class="m">k → −k</span> at the pulse center.',
+        'Signal: <span class="m">S(t) = Σ<sub>p</sub> [M<sub>x,p</sub>(t) + i M<sub>y,p</sub>(t)]</span> over the N² pixels (real part in blue, |S| as the envelope). Samples are taken at the centers of the N dwell intervals of the readout, where k<sub>x</sub> is an integer.'
+      ]],
+      ['Pixel array', [
+        'Bloch equations in the rotating frame, pixel p at (x<sub>p</sub>, y<sub>p</sub>), with <span class="m">M<sub>⊥</sub> = M<sub>x</sub> + i M<sub>y</sub></span>: <span class="m">dM<sub>⊥</sub>/dt = −i·2π(G<sub>x</sub>x<sub>p</sub> + G<sub>y</sub>y<sub>p</sub>)(γ/2π)·M<sub>⊥</sub> − M<sub>⊥</sub>/T2</span>, <span class="m">dM<sub>z</sub>/dt = (M<sub>0</sub> − M<sub>z</sub>)/T1</span>. In a step where k advances by (Δk<sub>x</sub>, Δk<sub>y</sub>): <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub> e<sup>−iΔφ</sup>, Δφ = 2π(Δk<sub>x</sub>x<sub>p</sub> + Δk<sub>y</sub>y<sub>p</sub>)/N</span>; relaxation: <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub>e<sup>−Δt/T2</sup>, M<sub>z</sub> → M<sub>0</sub> + (M<sub>z</sub> − M<sub>0</sub>)e<sup>−Δt/T1</sup></span>.',
+        'Pulses (hard): rotation by θ about the pulse axis; 90° about y: <span class="m">(M<sub>x</sub>, M<sub>z</sub>) → (M<sub>z</sub>, −M<sub>x</sub>)</span> (+z → +x); inversion 180° at rest: <span class="m">M<sub>z</sub> → −M<sub>z</sub></span>, then <span class="m">M<sub>z</sub>(t) = M<sub>0</sub>(1 − 2e<sup>−t/T1</sup>)</span>, zero at t = T1·ln 2; 180° about x: <span class="m">(M<sub>y</sub>, M<sub>z</sub>) → (−M<sub>y</sub>, −M<sub>z</sub>)</span>, i.e. <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub><sup>*</sup></span>. The angle grows linearly across the pulse width, with no relaxation or gradients in that interval.',
+        'Cell color (intensity + phase mode): hue = <span class="m">arg M<sub>⊥</sub></span>, intensity = <span class="m">√(|M<sub>⊥</sub>|/M<sub>0,max</sub>)</span> (or linear). Intensity mode: gray = M<sub>0</sub>.'
+      ]],
+      ['k-space', [
+        'Each sample is <span class="m">S(t)</span> at the instant when <span class="m">k(t) = (k<sub>x</sub>, k<sub>y</sub>)</span> is an integer. Since each pixel carries the phase <span class="m">−2π k·r<sub>p</sub>/N</span> accumulated by the gradients, <span class="m">S(k) = Σ<sub>p</sub> m<sub>p</sub> e<sup>−2πi(k<sub>x</sub>x<sub>p</sub> + k<sub>y</sub>y<sub>p</sub>)/N</sup></span>: the forward DFT of the magnetizations, with <span class="m">m<sub>p</sub> = M<sub>0,p</sub>·(available M<sub>z</sub>/M<sub>0</sub>)·e<sup>−TE<sub>line</sub>/T2</sup></span> for ideal pulses.',
+        'Color: hue = <span class="m">arg S(k)</span> (0 = red, π/2 = yellow-green, π = cyan, −π/2 = blue-violet), intensity = <span class="m">√(|S(k)|/ΣM<sub>0</sub>)</span> (or linear), the same encoding as the legend ball. The marker is k(t); the dashed jump is the 180°\'s k → −k.'
+      ]],
+      ['Real image (inverse Fourier)', [
+        '<span class="m">ρ(r) = (1/N²) Σ<sub>k</sub> S(k) e<sup>+2πi k·r/N</sup></span>. Grouping each conjugate pair {k, −k}: <span class="m">Z<sub>k</sub> = S(k) + S(−k)<sup>*</sup></span>, <span class="m">A<sub>k</sub> = |Z<sub>k</sub>|/N²</span>, <span class="m">φ<sub>k</sub> = arg Z<sub>k</sub></span>, and the pair\'s real contribution is <span class="m">A<sub>k</sub> cos(2π k·r/N + φ<sub>k</sub>)</span>; the DC term is <span class="m">|S(0)|/N² · cos(arg S(0))</span>. The (N²+1)/2 modes enter in increasing |k|; the sum is real by construction and the image shows its magnitude, as the scanner does (tissues with M<sub>z</sub> &lt; 0 at the 90° appear bright). White = maximum of the full reconstruction.'
+      ]],
+      ['Mode / Residual', [
+        'Mode: the normalized pattern <span class="m">cos(2π k·r/N + φ<sub>k</sub>)</span> (mid-gray = 0); the small "×" square is |Z<sub>k</sub>| in the k-space encoding (always phase 0).',
+        'Residual: <span class="m">|ρ|/c − ρ<sub>ideal</sub></span>, with <span class="m">ρ<sub>ideal,p</sub> = |M<sub>⊥,p</sub>(t<sub>k=0</sub>)|</span> (each pixel\'s signal at the instant of the central sample: the contrast the sequence intends) and <span class="m">c = Σ<sub>p</sub> |ρ<sub>p</sub>|ρ<sub>ideal,p</sub> / Σ<sub>p</sub> ρ<sub>ideal,p</sub><sup>2</sup></span> (least squares), shown on the image\'s gray scale, mid-gray = 0, times the gain. What remains is the effect of the k-space filter: unequal weights across lines and truncation.',
+        'When the k<sub>y</sub> lines have different TEs (fast spin echo), <span class="m">S<sub>meas</sub>(k) = W(k<sub>y</sub>) S(k)</span> with <span class="m">W = e<sup>−TE(k<sub>y</sub>)/T2</sup></span>, hence <span class="m">ρ<sub>rec</sub> = w ∗ ρ</span>, <span class="m">w = F<sup>−1</sup>[W]</span>: the residual is the effect of that convolution.'
+      ]]
+    ],
+    notes: 'Model: what is physics and what is didactic simplification',
+    noteList: [
+      'Model (common to all sequences): rotating frame at ω₀, Δφ = 2π(Δkₓ·x + Δk_y·y)/N with x, y ∈ {−(N−1)/2,…,(N−1)/2} (N odd, selector in the panel), m → m·e^{−iΔφ}: the samples are the forward DFT of the pixel magnetizations. Hard pulses, with the angle growing linearly across the width only so the rotation can be watched; relaxation suspended during pulses. Relaxation: M⊥ ∝ e^{−t/T2}, M_z → M₀ + (M_z − M₀)e^{−t/T1}; sliders at ∞ switch them off. Signal S = Σ(Mₓ + iM_y) over the N² pixels (unnormalized). Up to N = 9 each pixel shows its Bloch sphere; above that only the cell color and, up to N = 15, the M⊥ arrow. Slice selection is taken as already done.',
+      'Phantoms are tissue maps: each pixel has a label (gray matter, white matter, CSF, fat, cortical bone, air, lesion) that fixes its proton density, T1 and T2 (dictionary tissues.json, approximate 3 T values), plus an optional density factor (the ramp). The "filled/empty" phantoms are gray matter on air: the simplest case, insensitive to TE and TR, where the signal intensity can be read directly as the sum of the transverse arrows of the filled pixels. The "GM on WM" phantoms have a background with signal, and then figure/background contrast depends on the sequence (TE, TR, TI). The "global T1/T2" box replaces the tissue values by the sliders, for experiments such as T2 = ∞.',
+      'k-space: each cell is one sampling (dwell) interval; the sample sits at its center and the readout sweep covers whole cells (−N/2 to +N/2). Color is the phase of S and intensity |S|, with the same encoding as the legend ball. At ideal refocusing pulses k → −k.',
+      'Inverse Fourier: image(r) = (1/N²) Σ_k S(k) e^{+2πi k·r/N}; each conjugate pair {k, −k} gives one real wave A cos(2π k·r/N + φ); (N²+1)/2 modes (DC + (N²−1)/2 pairs) in increasing |k|. Residual = image/c − ideal image (each pixel\'s |M⊥| at the central echo), with c by least squares: it measures the k-space filter, not the contrast.',
+      'Sequences are JSON files (format didactic-mri-sequence/1): parameters, constants, derived variables and a list of events per repetition (rf, grad, adc, spoil, repeat, band, arrow, mark), with times and areas as expressions. "Copy sequence JSON" exports the current sequence; "load sequence" reads one from disk. Expressions are evaluated as JavaScript: load only files from a known source.',
+      'Keyboard: space = play/pause, ← → = previous/next event, Home = start.'
+    ]
+  }
+};
+const E = SeqEngine, D = SeqDraw;
+const st = { defs: {}, order: [], seqId: 'se', def: null, P: {}, S: null, N: 5, phantom: 'squareAir', lang: 'pt', cellMode: 'density', linear: false, compress: true, scrubbing: false,
+  speed: 10, u: 0, playing: false, sim: null, L: null, raf: 0, last: 0, cursorEl: null, revealEl: null, hlEl: null, events: [] };
+const EPS = 22 * Math.PI / 180;          // elevation of the view: the equator becomes an ellipse of aspect sin(EPS)
+
+function L() { return I18N[st.lang]; }
+function PH() { if (!st.ph || st.ph.name !== st.phantom || st.ph.N !== st.N) st.ph = Object.assign({ name: st.phantom, N: st.N }, E.phantom(st.phantom, st.N, TISSUES)); return st.ph; }
+function M0() { return PH().M0; }
+const NSPHERE = 9, NARROW = 15;   // Bloch spheres drawn up to N = NSPHERE; transverse arrows only up to NARROW
+function nModes() { return (st.N * st.N + 1) / 2; }
+function mk(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/([_^])\{([^}]*)\}/g, (m, c, t) => c === '_' ? `<sub>${t}</sub>` : `<sup>${t}</sup>`).replace(/([_^])([A-Za-z0-9α-ωΑ-Ω−+\-]{1})/g, (m, c, t) => c === '_' ? `<sub>${t}</sub>` : `<sup>${t}</sup>`); }
+function loc(v) { return (v && typeof v === 'object') ? (v[st.lang] || v.pt || v.en || '') : (v == null ? '' : String(v)); }
+function fmtMs(v) { return Number.isFinite(v) ? v + ' ms' : '∞'; }
+
+// replace native select popups by in-page lists (see the .dd rules); call after options or values change
+function enhanceSelects() {
+  for (const sel of document.querySelectorAll('select')) {
+    let dd = sel.parentElement;
+    if (!dd || !dd.classList.contains('dd')) {
+      dd = document.createElement('span'); dd.className = 'dd' + (sel.classList.contains('h1sel') ? ' h1' : '');
+      sel.replaceWith(dd); dd.appendChild(sel); sel.tabIndex = -1;
+      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'ddbtn'; btn.setAttribute('aria-haspopup', 'listbox');
+      const list = document.createElement('div'); list.className = 'ddlist'; list.setAttribute('role', 'listbox');
+      dd.append(btn, list);
+      const close = () => { list.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); };
+      const open = () => {
+        list.innerHTML = '';
+        for (const o of sel.options) {
+          const it = document.createElement('div'); it.setAttribute('role', 'option'); it.textContent = o.textContent; it.dataset.v = o.value;
+          if (o.value === sel.value) { it.classList.add('cur'); it.setAttribute('aria-selected', 'true'); }
+          it.addEventListener('click', ev => { ev.stopPropagation(); close(); if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); } });
+          list.appendChild(it);
+        }
+        for (const other of document.querySelectorAll('.ddlist.open')) other.classList.remove('open');
+        list.classList.add('open'); btn.setAttribute('aria-expanded', 'true');
+      };
+      btn.addEventListener('click', ev => { ev.stopPropagation(); list.classList.contains('open') ? close() : open(); });
+      btn.addEventListener('keydown', ev => {
+        const i = sel.selectedIndex, n = sel.options.length;
+        if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); const j = Math.min(n - 1, Math.max(0, i + (ev.key === 'ArrowDown' ? 1 : -1))); if (j !== i) { sel.selectedIndex = j; sel.dispatchEvent(new Event('change', { bubbles: true })); } if (list.classList.contains('open')) open(); }
+        else if (ev.key === 'Escape') close();
+      });
+      document.addEventListener('click', close);
+      sel.addEventListener('change', () => { btn.textContent = sel.options[sel.selectedIndex]?.textContent || ''; });
+    }
+    dd.querySelector('.ddbtn').textContent = sel.options[sel.selectedIndex]?.textContent || '';
+  }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') for (const l of document.querySelectorAll('.ddlist.open')) l.classList.remove('open'); });
+
+function applyLang() {
+  const d = L();
+  $('sub').innerHTML = mk(loc(st.def.subtitle)); $('lead').innerHTML = mk(loc(st.def.lead));
+  for (const o of $('seqSel').options) o.textContent = loc(st.defs[o.value].name);
+  $('play').textContent = st.playing ? d.pause : d.play; $('reset').textContent = d.reset; $('prev').textContent = d.prev; $('next').textContent = d.next;
+  $('lSpeed').textContent = d.speed; $('lPhantom').textContent = d.phantom;
+  for (const k of ['squareAir', 'letterFAir', 'uniform', 'square', 'letterF', 'ramp', 'brain']) $('phantom').querySelector(`option[value=${k}]`).textContent = d[k];
+  $('lModeDensity').textContent = d.modeDensity; $('lModePhase').textContent = d.modePhase; $('lModeTissue').textContent = d.modeTissue; $('lRelaxOverride').textContent = d.relaxOverride; $('lLinear').textContent = d.linear; $('lCompress').textContent = d.compress; $('lang').textContent = d.lang; $('copysvg').textContent = d.copy; $('loadseq').textContent = d.loadseq; $('copyseq').textContent = d.copyseq;
+  buildParamControls();
+  $('tSpins').textContent = d.tSpins(st.N); $('sSpins').textContent = st.cellMode === 'phase' ? d.sSpinsPhase : (st.cellMode === 'tissue' ? d.sSpinsTissue : d.sSpinsDensity);
+  const used = new Set(PH().label);
+  $('tissueLegend').innerHTML = `<span>${d.tissueHdr}</span>` + Object.entries(TISSUES).filter(([k]) => used.has(k)).map(([k, t]) => `<span><i style="background:${t.color}"></i>${loc(t.name)} ${t.pd.toFixed(2)} · ${t.T1} · ${t.T2}</span>`).join(''); $('tK').textContent = d.tK;
+  $('fplay').textContent = F.playing ? d.fpause : d.fplay; $('freset').textContent = d.freset; $('fprev').textContent = d.fprev; $('fnext').textContent = d.fnext;
+  $('lFspeed').textContent = d.fspeed; $('vFspeed').textContent = (F.speed = +$('fspeed').value / 10).toFixed(1) + ' ' + d.fspeedUnit;
+  $('tImg').textContent = d.tImg; $('lGain').textContent = d.lGain;
+  $('tNotes').textContent = d.notes;
+  const seqNotes = (st.def.notes && (st.def.notes[st.lang] || st.def.notes.pt)) || [];
+  $('notes').innerHTML = seqNotes.concat(d.noteList).map(s => `<li>${mk(s)}</li>`).join('');
+  $('tEq').textContent = d.tEq; $('eqs').innerHTML = d.eqs.map(([h, ps]) => `<div><h3>${h}</h3>${ps.map(x => `<p>${x}</p>`).join('')}</div>`).join('');
+  document.documentElement.lang = st.lang === 'pt' ? 'pt-BR' : 'en';
+  enhanceSelects();
+}
+
+// sequence parameter controls, built from the sequence file
+function buildParamControls() {
+  const box = $('seqParams'); box.innerHTML = '';
+  for (const p of st.def.params || []) {
+    const lab = document.createElement('label'), id = 'p_' + p.id;
+    if (p.type === 'checkbox') {
+      lab.innerHTML = `<input type="checkbox" id="${id}"> <span>${loc(p.label)}</span>`;
+      lab.querySelector('input').checked = !!st.P[p.id];
+      lab.querySelector('input').addEventListener('change', e => { st.P[p.id] = e.target.checked ? 1 : 0; pause(); rebuild(); });
+    } else if (p.type === 'select') {
+      lab.innerHTML = `<span>${loc(p.label)}</span> <select id="${id}">${p.options.map(o => `<option value="${o.value}">${loc(o.label)}</option>`).join('')}</select>`;
+      lab.querySelector('select').value = st.P[p.id];
+      lab.querySelector('select').addEventListener('change', e => { st.P[p.id] = e.target.value; pause(); rebuild(); });
+    } else {
+      lab.innerHTML = `<span${p.title ? ` title="${loc(p.title)}"` : ''}>${loc(p.label || p.id)}</span> <input type="range" id="${id}" min="${p.min}" max="${p.max}" step="${p.step || 1}"><span class="v" id="v_${p.id}"></span>`;
+      const inp = lab.querySelector('input'); inp.value = st.P[p.id];
+      inp.addEventListener('input', e => { st.P[p.id] = +e.target.value; $('v_' + p.id).textContent = st.P[p.id] + (p.unit ? ' ' + p.unit : ''); pause(); rebuild(); });
+      lab.querySelector('.v').textContent = st.P[p.id] + (p.unit ? ' ' + p.unit : '');
+    }
+    box.appendChild(lab);
+  }
+}
+function readSliders() {
+  const t1 = +$('T1').value, t2 = +$('T2').value, ph = PH(), over = $('relaxOverride').checked;
+  st.relax = over ? { T1: t1 >= +$('T1').max ? Infinity : t1, T2: t2 >= +$('T2').max ? Infinity : t2, dt: 0.1, nGap: 80 } : { T1: ph.T1, T2: ph.T2, dt: 0.1, nGap: 80 };
+  $('T1').disabled = !over; $('T2').disabled = !over;
+  $('vT1').textContent = over ? fmtMs(st.relax.T1) : '—'; $('vT2').textContent = over ? fmtMs(st.relax.T2) : '—';
+  $('vSpeed').textContent = (st.speed = +$('speed').value) + '×';
+}
+function selectSequence(id) {
+  st.seqId = id; st.def = st.defs[id]; st.P = E.paramDefaults(st.def);
+  if (st.def.phantom && $('phantom').querySelector(`option[value=${st.def.phantom}]`)) { st.phantom = st.def.phantom; $('phantom').value = st.phantom; }
+  if (st.def.relax) { $('T1').value = Number.isFinite(st.def.relax.T1) ? st.def.relax.T1 : $('T1').max; $('T2').value = Number.isFinite(st.def.relax.T2) ? st.def.relax.T2 : $('T2').max; }
+  $('seqSel').value = id; st.u = 0; pause(); fPause(); F.step = -1; F.phase = 0; F.data = null;
+  applyLang(); rebuild();
+}
+
+function drawOpts(extra) { const d = L(); return Object.assign({ lang: st.lang, compress: st.compress, labels: { peDesc: d.peDesc, feDesc: d.feDesc, envDesc: d.envDesc } }, extra); }
+function rebuild() {
+  readSliders();
+  let S;
+  try { S = E.compile(st.def, st.P, st.lang, st.N); $('err').textContent = ''; }
+  catch (e) { $('err').textContent = L().errSeq + e.message; if (!st.S) return; S = st.S; }
+  st.S = S;
+  st.sim = E.simulate(S, M0(), st.relax);
+  const r = D.build(S, st.sim, drawOpts({ showCursor: true }));
+  st.bandX = r.bandX; st.bandW = r.bandW;
+  st.L = r.L;
+  const wrap = $('figwrap'); wrap.innerHTML = r.svg;
+  const svg = wrap.querySelector('svg');
+  st.cursorEl = svg.querySelector('#cursor'); st.revealEl = svg.querySelector('#revealRect'); st.hlEl = svg.querySelector('#trHighlight');
+  // event list for stepping
+  st.events = E.eventTimes(S).map(t => st.L.uOf(t));
+  svg.style.width = st.compress ? '' : r.L.width + 'px';
+  attachScrub(svg);
+  st.u = Math.min(st.u, st.L.uEnd);
+  render();
+}
+
+function attachScrub(svg) {
+  let down = false;
+  const toU = e => { const r = svg.getBoundingClientRect(); const xs = (e.clientX - r.left) * st.L.width / r.width; return Math.max(0, Math.min(st.L.uEnd, (xs - st.L.gutter) / st.L.s)); };
+  svg.addEventListener('pointerdown', e => { down = true; st.scrubbing = true; svg.setPointerCapture(e.pointerId); pause(); st.u = toU(e); render(); });
+  svg.addEventListener('pointermove', e => { if (down) { st.u = toU(e); render(); } });
+  svg.addEventListener('pointerup', () => { down = false; st.scrubbing = false; }); svg.addEventListener('pointercancel', () => { down = false; st.scrubbing = false; });
+}
+
+/* ---------- playback ---------- */
+function play() { fPause(); if (st.u >= st.L.uEnd - 1e-6) st.u = 0; st.playing = true; $('play').textContent = L().pause; st.last = performance.now(); cancelAnimationFrame(st.raf); st.raf = requestAnimationFrame(tick); }
+function pause() { st.playing = false; $('play').textContent = L().play; cancelAnimationFrame(st.raf); }
+function tick(now) {
+  if (!st.playing) return;
+  const dtReal = Math.min(0.1, (now - st.last) / 1000); st.last = now;
+  st.u += st.speed * dtReal;
+  if (st.u >= st.L.uEnd) { st.u = st.L.uEnd; render(); pause(); return; }
+  render(); st.raf = requestAnimationFrame(tick);
+}
+function stepEvent(dir) {
+  pause(); fPause();
+  const eps = 1e-4; let target = null;
+  if (dir > 0) { for (const u of st.events) if (u > st.u + eps) { target = u; break; } if (target == null) target = st.L.uEnd; }
+  else { for (let i = st.events.length - 1; i >= 0; i--) if (st.events[i] < st.u - eps) { target = st.events[i]; break; } if (target == null) target = 0; }
+  st.u = target; render();
+}
+
+/* ---------- colors ---------- */
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function parseRGB(c) {
+  const d = document.createElement('canvas').getContext('2d'); d.fillStyle = c; const s = d.fillStyle;   // normalizes to #rrggbb
+  return [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)];
+}
+function hsl2rgb(h, s, l) {
+  h = ((h % 360) + 360) % 360; s /= 100; l /= 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  let r, g, b;
+  if (h < 60) [r, g, b] = [c, x, 0]; else if (h < 120) [r, g, b] = [x, c, 0]; else if (h < 180) [r, g, b] = [0, c, x];
+  else if (h < 240) [r, g, b] = [0, x, c]; else if (h < 300) [r, g, b] = [x, 0, c]; else [r, g, b] = [c, 0, x];
+  return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+}
+let dark = false, bgRGB = [255, 255, 255];
+function refreshTheme() { bgRGB = parseRGB(cssVar('--panel')); dark = (bgRGB[0] + bgRGB[1] + bgRGB[2]) / 3 < 128; }
+function phaseRGB(phi) { let h = (phi / (2 * Math.PI)) % 1; if (h < 0) h += 1; return hsl2rgb(h * 360, 85, dark ? 56 : 46); }
+function mixColor(phi, a) { const c = phaseRGB(phi); return `rgb(${bgRGB.map((b, i) => Math.round(b + a * (c[i] - b))).join(',')})`; }
+function intensity(x) { return st.linear ? x : Math.sqrt(x); }
+
+/* ---------- drawing ---------- */
+function setupCanvas(cv, cssW, cssH) {
+  const dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(cssW * dpr) || cv.height !== Math.round(cssH * dpr)) { cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr); }
+  cv.style.height = cssH + 'px';
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, cssW, cssH); return ctx;
+}
+function arrow(ctx, x0, y0, x1, y1, color, w, halo) {
+  const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+  if (len < 1.2) return;
+  const hl = Math.min(7, len * 0.6), hw = hl * 0.5, ux = dx / len, uy = dy / len;
+  ctx.setLineDash([]); ctx.lineJoin = 'round';
+  const pass = (col, lw, headStroke) => {
+    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - ux * hl * 0.6, y1 - uy * hl * 0.6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - ux * hl - uy * hw, y1 - uy * hl + ux * hw); ctx.lineTo(x1 - ux * hl + uy * hw, y1 - uy * hl - ux * hw); ctx.closePath(); ctx.fill();
+    if (headStroke) { ctx.lineWidth = headStroke; ctx.stroke(); }
+  };
+  if (halo) pass(halo, w + 1.8, 1.6);              // thin contrast halo on grey cells
+  pass(color, w, 0);
+}
+function luma(hex) { const n = parseInt(hex.slice(1), 16); return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255); }
+function drawSphere(ctx, cx, cy, R, mx, my, mz, m0, m0max, tissueOf) {
+  const se = Math.sin(EPS), ce = Math.cos(EPS);
+  const proj = (x, y, z) => [cx + R * x, cy - R * (y * se + z * ce)];
+  const sphere = cssVar('--sphere'), eq = cssVar('--equator');
+  const c = R / 0.4;
+  let halo = null;
+  if (st.cellMode === 'density') {                 // grey scale: proton density, white = M0 = 1
+    const g = Math.round(255 * (0.1 + 0.9 * Math.min(1, m0)));
+    ctx.fillStyle = `rgb(${g},${g},${g})`; ctx.beginPath(); ctx.roundRect(cx - c / 2 + 1, cy - c / 2 + 1, c - 2, c - 2, 5); ctx.fill();
+    halo = g < 140 ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.3)';
+  } else if (st.cellMode === 'tissue') {           // tissue colour
+    const col = TISSUES[tissueOf].color; ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect(cx - c / 2 + 1, cy - c / 2 + 1, c - 2, c - 2, 5); ctx.fill();
+    halo = luma(col) < 140 ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.3)';
+  } else {                                          // colour: transverse phase, intensity |M_perp|
+    const mt = Math.hypot(mx, my), a = 0.5 * intensity(Math.min(1, mt / m0max));
+    if (a > 0.01) { ctx.fillStyle = mixColor(Math.atan2(my, mx), a); ctx.beginPath(); ctx.roundRect(cx - c / 2 + 1, cy - c / 2 + 1, c - 2, c - 2, 5); ctx.fill(); }
+  }
+  ctx.lineWidth = 1.3; ctx.strokeStyle = sphere; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.stroke();
+  // z axis (faint), equator: back half dashed, front half solid
+  ctx.strokeStyle = sphere; ctx.setLineDash([2, 3]);
+  ctx.beginPath(); const [zx0, zy0] = proj(0, 0, -1), [zx1, zy1] = proj(0, 0, 1); ctx.moveTo(zx0, zy0); ctx.lineTo(zx1, zy1); ctx.stroke();
+  ctx.strokeStyle = eq; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.ellipse(cx, cy, R, R * se, 0, Math.PI, 2 * Math.PI); ctx.stroke();
+  ctx.setLineDash([]); ctx.beginPath(); ctx.ellipse(cx, cy, R, R * se, 0, 0, Math.PI); ctx.stroke();
+  // vectors
+  const [tx, ty] = proj(mx, my, mz), [px, py] = proj(mx, my, 0), [lx, ly] = proj(0, 0, mz);
+  ctx.strokeStyle = halo ? (halo.startsWith('rgba(255') ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)') : cssVar('--muted'); ctx.lineWidth = 0.9; ctx.setLineDash([2, 2]);
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(px, py); ctx.moveTo(tx, ty); ctx.lineTo(lx, ly); ctx.stroke();
+  ctx.setLineDash([]);
+  arrow(ctx, cx, cy, px, py, cssVar('--vecC'), 1.6, halo);
+  arrow(ctx, cx, cy, lx, ly, cssVar('--vecC'), 1.6, halo);
+  arrow(ctx, cx, cy, tx, ty, cssVar('--vecM'), 2.2, halo);
+}
+function axisLabels(ctx, N, pad, cell, W, H, xName, yName) {
+  const Hh = (N - 1) / 2, step = N <= 9 ? 1 : (N <= 15 ? 2 : 4);
+  ctx.font = `${N <= 9 ? 12 : 10}px ${cssVar('--mono')}`; ctx.fillStyle = cssVar('--muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (let v = -Hh; v <= Hh; v += step) { ctx.fillText(String(v), pad + (v + Hh + 0.5) * cell, H - pad / 2); ctx.fillText(String(v), pad / 2, (Hh - v + 0.5) * cell); }
+  ctx.font = `italic 12px ${cssVar('--font')}`; ctx.fillText(xName || 'x', W - 8, H - pad / 2); ctx.fillText(yName || 'y', pad / 2, 8);
+}
+// large N: no sphere; cell fill (density gray or phase tint) and, up to NARROW, the transverse magnetization as a 2D arrow
+function drawCellFlat(ctx, cx, cy, c, mx, my, m0, m0max, withArrow, tissueOf) {
+  let halo = null;
+  if (st.cellMode === 'density') { const g = Math.round(255 * (0.1 + 0.9 * Math.min(1, m0))); ctx.fillStyle = `rgb(${g},${g},${g})`; halo = g < 140 ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.3)'; }
+  else if (st.cellMode === 'tissue') { const col = TISSUES[tissueOf].color; ctx.fillStyle = col; halo = luma(col) < 140 ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.3)'; }
+  else { const mt = Math.hypot(mx, my), a = intensity(Math.min(1, mt / m0max)); ctx.fillStyle = a > 0.01 ? mixColor(Math.atan2(my, mx), a) : cssVar('--panel2'); }
+  ctx.beginPath(); ctx.roundRect(cx - c / 2 + 1, cy - c / 2 + 1, c - 2, c - 2, 3); ctx.fill();
+  if (withArrow) { const R = 0.42 * c; arrow(ctx, cx, cy, cx + R * mx / m0max, cy - R * my / m0max, cssVar('--vecM'), 1.4, halo); }
+}
+function renderSpins(i) {
+  const N = st.N, Hh = (N - 1) / 2, NP = N * N, cv = $('spins'), W = cv.clientWidth || 400, pad = 22, cell = (W - pad) / N, H = Math.round(cell * N + pad);
+  const ctx = setupCanvas(cv, W, H), sim = st.sim, m0 = M0(), m0max = Math.max(...m0);
+  axisLabels(ctx, N, pad, cell, W, H);
+  ctx.font = `italic 12px ${cssVar('--font')}`; ctx.fillText('x', W - 8, H - pad / 2); ctx.fillText('y', pad / 2, 8);
+  for (let p = 0; p < NP; p++) {
+    const j = p % N, l = Math.floor(p / N), cx = pad + (j + 0.5) * cell, cy = (l + 0.5) * cell, mx = sim.Mx[i * NP + p], my = sim.My[i * NP + p], mz = sim.Mz[i * NP + p];
+    if (N <= NSPHERE) drawSphere(ctx, cx, cy, 0.4 * cell, mx, my, mz, m0[p], m0max, PH().label[p]);
+    else drawCellFlat(ctx, cx, cy, cell, mx, my, m0[p], m0max, N <= NARROW, PH().label[p]);
+  }
+}
+function renderK(i) {
+  const N = st.N, Hh = (N - 1) / 2, cv = $('kspace'), W = cv.clientWidth || 400, pad = 22, G = W - pad, c = G / N, ox = pad, oy = 0, H = Math.round(G + pad);
+  const ctx = setupCanvas(cv, W, H), sim = st.sim, t = sim.times[i];
+  const px = kx => ox + (kx + N / 2) * c, py = ky => oy + (N / 2 - ky) * c;
+  ctx.fillStyle = cssVar('--panel2'); ctx.fillRect(ox, oy, G, G);
+  for (const s of sim.samples) if (s.idx <= i) {
+    const mag = Math.hypot(s.re, s.im) / sim.Smax;
+    ctx.fillStyle = mixColor(Math.atan2(s.im, s.re), intensity(Math.min(1, mag)));
+    ctx.fillRect(px(s.kx - 0.5), py(s.ky + 0.5), c, c);
+  }
+  ctx.strokeStyle = cssVar('--line'); ctx.lineWidth = 1; ctx.setLineDash([]);
+  for (let q = 0; q <= N; q++) { ctx.beginPath(); ctx.moveTo(ox + q * c, oy); ctx.lineTo(ox + q * c, oy + G); ctx.moveTo(ox, oy + q * c); ctx.lineTo(ox + G, oy + q * c); ctx.stroke(); }
+  axisLabels(ctx, N, pad, c, W, H, 'kx', 'ky');
+  // trajectory of the current TR, jump dashed
+  const bi = bandAt(t), i0 = bi < 0 ? 0 : E.indexAt(sim, sim.S.bands[bi].t);
+  ctx.lineWidth = 1.4; ctx.strokeStyle = cssVar('--cursor');
+  let lastX = px(sim.kxM[i0]), lastY = py(sim.kyM[i0]);
+  for (let q = i0 + 1; q <= i; q++) {
+    const X = px(sim.kxM[q]), Y = py(sim.kyM[q]);
+    if (Math.abs(sim.kxM[q] - sim.kxM[q - 1]) + Math.abs(sim.kyM[q] - sim.kyM[q - 1]) > 0.5) ctx.setLineDash([4, 4]); else ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(X, Y); ctx.stroke(); lastX = X; lastY = Y;
+  }
+  ctx.setLineDash([]);
+  if (F.step >= 0 && F.step < nModes() && F.data) {           // conjugate pair being reconstructed: thick alien-green border
+    ctx.strokeStyle = '#39ff14'; ctx.lineWidth = 4;
+    for (const [kx, ky] of F.data.modes[F.step].cells) ctx.strokeRect(px(kx - 0.5) + 2, py(ky + 0.5) + 2, c - 4, c - 4);
+  }
+  const mx = px(sim.kxM[i]), my = py(sim.kyM[i]);
+  ctx.beginPath(); ctx.arc(mx, my, 5.5, 0, 2 * Math.PI); ctx.fillStyle = cssVar('--cursor'); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+  // last acquired sample text
+  let last = null; for (const s of sim.samples) if (s.idx <= i) last = s;
+  $('lastSample').textContent = last ? L().last(last.kx, last.ky, (Math.hypot(last.re, last.im) / sim.Smax).toFixed(3), Math.round(Math.atan2(last.im, last.re) * 180 / Math.PI)) : '';
+}
+function renderWheel() {
+  const cv = $('wheel'), Wc = 160, ctx = setupCanvas(cv, Wc, Wc), cx = 80, cy = 80, R = 52, d = L();
+  // solid ball: hue = phase (counter-clockwise from +x), radial coordinate = |S| with the same intensity law as the cells
+  for (let r = R; r >= 1; r--) for (let q = 0; q < 72; q++) {
+    const a0 = q * Math.PI / 36, a1 = a0 + Math.PI / 36 + 0.03;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, -a1, -a0, false); ctx.closePath(); ctx.fillStyle = mixColor((a0 + a1) / 2, intensity(r / R)); ctx.fill();
+  }
+  ctx.strokeStyle = cssVar('--line'); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.stroke();
+  // phase labels outside
+  ctx.fillStyle = cssVar('--fg'); ctx.font = `10px ${cssVar('--mono')}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('0', cx + R + 10, cy); ctx.fillText('π', cx - R - 9, cy); ctx.fillText('π/2', cx, cy - R - 9); ctx.fillText('−π/2', cx, cy + R + 10);
+  // |S| arrow from the center outward (white, dark halo)
+  const ang = -0.6, x1 = cx + 0.86 * R * Math.cos(ang), y1 = cy - 0.86 * R * Math.sin(ang);
+  arrow(ctx, cx, cy, x1, y1, '#fff', 2, 'rgba(0,0,0,0.55)');
+  ctx.font = `bold 11px ${cssVar('--font')}`; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineJoin = 'round';
+  const lx = cx + 0.55 * R * Math.cos(ang) - 11 * Math.sin(ang) + 2, ly = cy - 0.55 * R * Math.sin(ang) - 11 * Math.cos(ang) - 1;
+  ctx.strokeText(d.mag, lx, ly); ctx.fillStyle = '#fff'; ctx.fillText(d.mag, lx, ly);
+  // the word "phase" along the upper-right edge, outside the ball
+  const word = d.phase, rr = R + 12; ctx.font = `600 12px ${cssVar('--font')}`; ctx.fillStyle = cssVar('--fg');
+  const widths = [...word].map(ch => ctx.measureText(ch).width), total = widths.reduce((a, b) => a + b, 0), span = total / rr;
+  let a = Math.PI / 4 + span / 2;        // centered on 45°, reading clockwise
+  [...word].forEach((ch, k) => { const half = widths[k] / 2 / rr; a -= half; ctx.save(); ctx.translate(cx + rr * Math.cos(a), cy - rr * Math.sin(a)); ctx.rotate(Math.PI / 2 - a); ctx.fillText(ch, 0, 0); ctx.restore(); a -= half; });
+}
+function bandAt(t) { const B = st.S.bands; for (let i = B.length - 1; i >= 0; i--) if (t >= B[i].t - 1e-9) return i; return -1; }
+function segmentText(t) {
+  const d = L(), sg = E.segmentAt(st.S, t);
+  const descOf = e => e.desc || (e.type === 'rf' ? d.seg.rf(Math.round(e.flip), e.axis) : e.type === 'adc' ? d.seg.adc : d.seg.grad(e.axis));
+  if (sg.kind === 'rf') return descOf(sg.e);
+  if (sg.kind === 'adc') return [descOf(sg.e)].concat(sg.grads.filter(g => g.desc).map(descOf)).join(' · ');
+  if (sg.kind === 'grad') return sg.grads.map(descOf).join(' + ');
+  return d.seg[sg.kind];
+}
+/* ---------- inverse Fourier reconstruction ---------- */
+const F = { step: -1, phase: 0, playing: false, raf: 0, last: 0, acc: 0, speed: 1, data: null, sim: null, nAcq: -1, gain: 1 };
+function acquiredUpTo(i) { const out = []; for (const s of st.sim.samples) if (s.idx <= i) out.push(s); return out; }
+function fourierPrep(i) {
+  const acq = acquiredUpTo(i);
+  if (F.data && F.sim === st.sim && F.nAcq === acq.length) return F.data;
+  const N = st.N, Hh = (N - 1) / 2, N2 = N * N, S = new Map(); for (const s of acq) S.set(s.kx + ',' + s.ky, s);
+  const get = (kx, ky) => S.get(kx + ',' + ky) || { re: 0, im: 0 };
+  const reps = []; for (let kx = -Hh; kx <= Hh; kx++) for (let ky = -Hh; ky <= Hh; ky++) if (kx > 0 || (kx === 0 && ky > 0)) reps.push([kx, ky]);
+  reps.sort((a, b) => (a[0] * a[0] + a[1] * a[1]) - (b[0] * b[0] + b[1] * b[1]) || Math.atan2(a[1], a[0]) - Math.atan2(b[1], b[0]));
+  const modes = [{ kx: 0, ky: 0, cells: [[0, 0]], Z: { re: get(0, 0).re, im: get(0, 0).im } }];
+  for (const [kx, ky] of reps) { const a = get(kx, ky), b = get(-kx, -ky); modes.push({ kx, ky, cells: [[kx, ky], [-kx, -ky]], Z: { re: a.re + b.re, im: a.im - b.im } }); }
+  for (const m of modes) {          // real contribution of the pair: (1/N^2) Re[Z e^{i theta}] = (|Z|/N^2) cos(theta + arg Z)
+    m.amp = Math.hypot(m.Z.re, m.Z.im) / N2; m.phase = Math.atan2(m.Z.im, m.Z.re);
+    m.contrib = new Float64Array(N2); m.pattern = new Float64Array(N2);
+    for (let p = 0; p < N2; p++) { const q = E.pixelXY(p, N), c = Math.cos(2 * Math.PI * (m.kx * q.x + m.ky * q.y) / N + m.phase); m.pattern[p] = c; m.contrib[p] = m.amp * c; }
+  }
+  const full = new Float64Array(N2); for (const m of modes) for (let p = 0; p < N2; p++) full[p] += m.contrib[p];
+  const mag = full.map(Math.abs), vmax = Math.max(1e-9, ...mag);
+  // reference ("ideal image" of this sequence): each pixel's |M_perp| at the k = 0 sample, i.e. the contrast the sequence
+  // intends, without the k-space weighting (T2 decay across lines, truncation) that the reconstruction adds
+  const s00 = acq.find(s => s.kx === 0 && s.ky === 0), ref = new Float64Array(N2), sim = st.sim;
+  if (s00) for (let p = 0; p < N2; p++) ref[p] = Math.hypot(sim.Mx[s00.idx * N2 + p], sim.My[s00.idx * N2 + p]);
+  const refmax = Math.max(1e-9, ...ref);
+  let num = 0, den = 0; for (let p = 0; p < N2; p++) { num += mag[p] * ref[p]; den += ref[p] * ref[p]; }
+  const c = den > 0 && num !== 0 ? num / den : 1;
+  const resid = new Float64Array(N2); let rmax = 0;
+  for (let p = 0; p < N2; p++) { resid[p] = (mag[p] / c - ref[p]) / refmax; rmax = Math.max(rmax, Math.abs(resid[p])); }
+  F.data = { modes, full, vmax, c, resid, rmax, refmax, nAcq: acq.length, S }; F.sim = st.sim; F.nAcq = acq.length;
+  return F.data;
+}
+function fResetIfStale(i) { const n = acquiredUpTo(i).length; if (F.sim !== st.sim || F.nAcq !== n) { fPause(); F.step = -1; F.phase = 0; F.data = null; } }
+function grayGrid(cv, values, map) {    // same geometry as the pixel array: pad 22 left/bottom, 5 cells
+  const N = st.N, W = cv.clientWidth || 400, pad = 22, cell = (W - pad) / N, H = Math.round(cell * N + pad), ctx = setupCanvas(cv, W, H);
+  axisLabels(ctx, N, pad, cell, W, H);
+  for (let p = 0; p < N * N; p++) {
+    const j = p % N, l = Math.floor(p / N), g = Math.round(255 * Math.max(0, Math.min(1, map(values[p]))));
+    ctx.fillStyle = `rgb(${g},${g},${g})`; ctx.beginPath(); ctx.roundRect(pad + j * cell + 1, l * cell + 1, cell - 2, cell - 2, N <= 9 ? 5 : 2); ctx.fill();
+  }
+  return { ctx, pad, cell, H };
+}
+// "× [k-space cell]" swatch inside the bottom-left cell of the mode pane: the amplitude that multiplies the pattern,
+// drawn with the same colour the cell has in the k-space pane (phase hue, |S| intensity) and the same alien-green border.
+function drawAmpSwatch(geo, m) {
+  // the pair sum with phases aligned, Z = S(k) + S(-k)*, is what multiplies the displayed cos(theta + phi) pattern:
+  // |Z| is real and non-negative, so the swatch is always phase 0 (red); its intensity encodes |Z| on the k-space scale.
+  const { ctx, pad, cell, H } = geo, left = pad, bottom = H - pad, side = cell / 3;
+  const x0 = left + 0.36 * cell, y0 = bottom - 0.1 * cell - side;
+  const Zmag = Math.hypot(m.Z.re, m.Z.im);
+  ctx.fillStyle = Zmag > 0 ? mixColor(0, intensity(Math.min(1, Zmag / st.sim.Smax))) : cssVar('--panel2');
+  ctx.fillRect(x0, y0, side, side);
+  ctx.strokeStyle = '#39ff14'; ctx.lineWidth = 3; ctx.strokeRect(x0, y0, side, side);
+  ctx.fillStyle = '#39ff14'; ctx.font = `bold ${Math.round(side * 0.8)}px ${cssVar('--font')}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('×', left + 0.2 * cell, y0 + side / 2 + 1);
+}
+function renderFourier(i) {
+  const d = fourierPrep(i), L_ = L(), s = F.step;
+  const NM = nModes(), N2 = st.N * st.N, nAdded = s < 0 ? 0 : (s >= NM ? NM : s + F.phase);
+  const img = new Float64Array(N2);
+  for (let j = 0; j < nAdded; j++) { const m = d.modes[j]; for (let p = 0; p < N2; p++) img[p] += m.contrib[p]; }
+  grayGrid($('img'), img, v => 0.1 + 0.9 * (Math.abs(v) / d.vmax));
+  $('sImg').textContent = nAdded === 0 ? L_.sImgIdle : L_.sImg(nAdded, d.nAcq, NM, N2);
+  if (s >= 0 && s < NM) {
+    const m = d.modes[s];
+    const geo = grayGrid($('mode'), m.pattern, v => 0.5 + 0.5 * v);
+    drawAmpSwatch(geo, m);
+    $('tMode').textContent = L_.tMode; $('gainRow').hidden = true;
+    const zRel = (Math.hypot(m.Z.re, m.Z.im) / st.sim.Smax).toFixed(3);
+    $('sMode').textContent = s === 0 ? L_.sModeDC(zRel) : L_.sMode(m.kx, m.ky, zRel, Math.round(m.phase * 180 / Math.PI));
+    $('fstatus').textContent = L_.fRun(s + 1, m.kx, m.ky, NM);
+  } else if (s >= NM) {
+    // same slope as the image (0.9 gray per vmax, residual converted to image units by c), zero at mid-gray, times the gain
+    grayGrid($('mode'), d.resid, v => 0.5 + 0.9 * F.gain * v * d.refmax * d.c / d.vmax);
+    $('tMode').textContent = L_.tResid; $('gainRow').hidden = false;
+    $('sMode').textContent = d.rmax > 1e-6 ? L_.sResid(d.rmax.toFixed(4), F.gain) : L_.sResid0;
+    $('fstatus').textContent = L_.fDone(NM);
+  } else {
+    grayGrid($('mode'), new Float64Array(N2), () => 0.5);
+    $('tMode').textContent = L_.tMode; $('gainRow').hidden = true; $('sMode').textContent = L_.sModeIdle; $('fstatus').textContent = L_.fIdle;
+  }
+}
+function curIndex() { return E.indexAt(st.sim, st.L.tOf(st.u)); }
+function fRenderAll() { const i = curIndex(); renderK(i); renderFourier(i); }
+function fAdvanceHalf() { if (F.step < 0) { F.step = 0; F.phase = 0; } else if (F.phase === 0) F.phase = 1; else { F.step++; F.phase = 0; } }
+function fPlay() { pause(); if (F.step >= nModes()) { F.step = -1; F.phase = 0; } F.playing = true; F.acc = 0.5; F.last = performance.now(); $('fplay').textContent = L().fpause; cancelAnimationFrame(F.raf); F.raf = requestAnimationFrame(fTick); }
+function fPause() { F.playing = false; $('fplay').textContent = L().fplay; cancelAnimationFrame(F.raf); }
+function fTick(now) {
+  if (!F.playing) return;
+  const dt = Math.min(0.1, (now - F.last) / 1000); F.last = now; F.acc += dt * F.speed;
+  while (F.acc >= 0.5) { F.acc -= 0.5; fAdvanceHalf(); if (F.step >= nModes()) { fPause(); break; } }
+  fRenderAll(); if (F.playing) F.raf = requestAnimationFrame(fTick);
+}
+function fStep(dir) {
+  fPause(); pause();
+  const NM = nModes();
+  if (dir > 0) { if (F.step < 0) { F.step = 0; F.phase = 1; } else if (F.step >= NM) return; else if (F.phase === 0) F.phase = 1; else { F.step++; F.phase = 1; if (F.step >= NM) { F.step = NM; F.phase = 0; } } }
+  else { if (F.step <= 0) { F.step = -1; F.phase = 0; } else if (F.step >= NM) { F.step = NM - 1; F.phase = 1; } else { F.step--; F.phase = 1; } }
+  fRenderAll();
+}
+
+function render() {
+  const t = st.L.tOf(st.u), i = E.indexAt(st.sim, t), sim = st.sim;
+  const x = st.L.xOfU(st.u);
+  st.cursorEl.setAttribute('transform', `translate(${x.toFixed(2)},0)`); st.revealEl.setAttribute('width', x.toFixed(2));
+  if (!st.scrubbing) {                                   // keep the cursor in view when the diagram is wider than its box
+    const fig = $('figwrap').parentElement, svg = $('figwrap').querySelector('svg');
+    if (fig.scrollWidth > fig.clientWidth + 2) {
+      const rect = svg.getBoundingClientRect(), fr = fig.getBoundingClientRect();
+      const cx = rect.left - fr.left + fig.scrollLeft + x * rect.width / st.L.width;
+      if (cx < fig.scrollLeft + 60 || cx > fig.scrollLeft + fig.clientWidth - 80) fig.scrollLeft = Math.max(0, cx - fig.clientWidth * 0.3);
+    }
+  }
+  const bi = bandAt(t), d = L(), B = st.S.bands;
+  if (bi >= 0) { st.hlEl.setAttribute('x', st.bandX(bi).toFixed(2)); st.hlEl.setAttribute('width', st.bandW(bi).toFixed(2)); st.hlEl.setAttribute('opacity', '0.8'); }
+  else st.hlEl.setAttribute('opacity', '0');
+  for (let q = 0; q < B.length; q++) { const el = $('trh' + q); if (el) el.classList.toggle('on', q === bi); }
+  const seg = st.u >= st.L.uEnd - 1e-6 ? d.seg.end : segmentText(t);
+  const bandTxt = bi >= 0 ? `<b>${mk(B[bi].label)}</b> · ` : '';
+  $('status').innerHTML = d.status(t.toFixed(1), bandTxt, sim.kxM[i].toFixed(2), sim.kyM[i].toFixed(2), mk(seg));
+  fResetIfStale(i);
+  renderSpins(i); renderK(i); renderFourier(i);
+}
+
+/* ---------- wiring ---------- */
+for (const id of ['T1', 'T2']) $(id).addEventListener('input', () => { pause(); rebuild(); });
+$('phantom').addEventListener('change', () => applyLang());
+$('compress').addEventListener('change', e => { const t = st.L.tOf(st.u); st.compress = e.target.checked; pause(); rebuild(); st.u = st.L.uOf(t); render(); });
+$('seqSel').addEventListener('change', e => selectSequence(e.target.value));
+$('speed').addEventListener('input', readSliders);
+$('fplay').addEventListener('click', () => F.playing ? fPause() : fPlay());
+$('freset').addEventListener('click', () => { fPause(); F.step = -1; F.phase = 0; fRenderAll(); });
+$('fprev').addEventListener('click', () => fStep(-1)); $('fnext').addEventListener('click', () => fStep(1));
+for (const inp of $('gainSeg').querySelectorAll('input')) inp.addEventListener('change', e => { if (e.target.checked) { F.gain = +e.target.value; for (const lb of $('gainSeg').querySelectorAll('label')) lb.classList.toggle('on', lb.contains(e.target)); if (st.sim) renderFourier(curIndex()); } });
+$('fspeed').addEventListener('input', () => { F.speed = +$('fspeed').value / 10; $('vFspeed').textContent = F.speed.toFixed(1) + ' ' + L().fspeedUnit; });
+$('phantom').addEventListener('change', e => { st.phantom = e.target.value; pause(); rebuild(); });
+$('nsel').addEventListener('change', e => { st.N = +e.target.value; pause(); fPause(); F.step = -1; F.phase = 0; F.data = null; st.u = 0; applyLang(); rebuild(); });
+for (const id of ['modeDensity', 'modePhase', 'modeTissue']) $(id).addEventListener('change', e => { if (e.target.checked) { st.cellMode = e.target.value; $('labDensity').classList.toggle('on', st.cellMode === 'density'); $('labPhase').classList.toggle('on', st.cellMode === 'phase'); $('labTissue').classList.toggle('on', st.cellMode === 'tissue'); applyLang(); render(); } });
+$('relaxOverride').addEventListener('change', () => { pause(); rebuild(); });
+$('linear').addEventListener('change', e => { st.linear = e.target.checked; applyLang(); render(); });
+$('play').addEventListener('click', () => st.playing ? pause() : play());
+$('reset').addEventListener('click', () => { pause(); st.u = 0; render(); });
+$('prev').addEventListener('click', () => stepEvent(-1)); $('next').addEventListener('click', () => stepEvent(1));
+$('lang').addEventListener('click', () => { st.lang = st.lang === 'pt' ? 'en' : 'pt'; applyLang(); rebuild(); });
+function registerSequence(def) {
+  if (!def || typeof def !== 'object' || !def.id || !Array.isArray(def.events)) throw new Error('not a sequence file');
+  E.compile(def, E.paramDefaults(def), st.lang, st.N);        // validate with defaults
+  if (!st.defs[def.id]) { const o = document.createElement('option'); o.value = def.id; $('seqSel').appendChild(o); st.order.push(def.id); }
+  st.defs[def.id] = def;
+}
+$('loadseq').addEventListener('click', () => $('seqfile').click());
+$('seqfile').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => { try { const def = JSON.parse(rd.result); registerSequence(def); selectSequence(def.id); $('err').textContent = L().loaded + loc(def.name); } catch (ex) { $('err').textContent = L().errSeq + ex.message; } };
+  rd.readAsText(file); e.target.value = '';
+});
+$('copyseq').addEventListener('click', () => {
+  const btn = $('copyseq'), txt = JSON.stringify(st.def, null, 2);
+  const done = ok => { btn.textContent = ok ? L().copied2 : L().copyFail; setTimeout(() => { btn.textContent = L().copyseq; }, 1800); };
+  try { navigator.clipboard.writeText(txt).then(() => done(true), () => done(false)); } catch (ex) { done(false); }
+});
+$('copysvg').addEventListener('click', () => {
+  const d = L(), svg = D.build(st.S, st.sim, drawOpts({ revealAll: true })).svg, btn = $('copysvg');
+  const done = ok => { btn.textContent = ok ? d.copied : d.copyFail; setTimeout(() => { btn.textContent = L().copy; }, 1800); };
+  try { navigator.clipboard.writeText(svg).then(() => done(true), () => done(false)); } catch (e) { done(false); }
+});
+document.addEventListener('keydown', e => {
+  const tag = e.target.tagName, typ = e.target.type;
+  if (tag === 'SELECT' || tag === 'BUTTON' && e.code === 'Space') return;
+  if (tag === 'INPUT' && !(typ === 'checkbox' && e.code !== 'Space')) return;   // sliders/radios keep their keys; checkboxes keep Space
+  if (e.code === 'Space') { e.preventDefault(); st.playing ? pause() : play(); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); stepEvent(1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); stepEvent(-1); }
+  else if (e.key === 'Home') { e.preventDefault(); pause(); st.u = 0; render(); }
+});
+const ro = new ResizeObserver(() => { if (st.sim) render(); }); ro.observe($('spins')); ro.observe($('kspace')); ro.observe($('img')); ro.observe($('mode'));
+const mq = window.matchMedia('(prefers-color-scheme: dark)');
+mq.addEventListener('change', () => { refreshTheme(); renderWheel(); render(); });
+new MutationObserver(() => { refreshTheme(); renderWheel(); render(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+for (const def of SEQUENCES) registerSequence(def);
+refreshTheme(); selectSequence('se'); renderWheel();
+})();
+</script>
+</body></html>

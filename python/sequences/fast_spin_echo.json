@@ -1,0 +1,58 @@
+{
+  "id": "fse",
+  "format": "didactic-mri-sequence/1",
+  "name": { "pt": "Fast Spin Echo", "en": "Fast Spin Echo" },
+  "subtitle": { "pt": "um trem de ecos, uma linha de k por eco", "en": "an echo train, one k line per echo" },
+  "lead": { "pt": "Um 90° e N pulsos de 180° (CPMG); cada eco adquire uma linha k_y, as N linhas numa única excitação. Matriz N×N no plano xy, um isocromato por pixel, referencial girante. Arraste sobre o diagrama para percorrer o tempo.",
+            "en": "One 90° and N 180° pulses (CPMG); each echo acquires one k_y line, all N lines from a single excitation. N×N array in the xy plane, one isochromat per pixel, rotating frame. Drag across the diagram to scrub through time." },
+  "relax": { "T1": 500, "T2": 80 },
+  "phantom": "squareAir",
+  "envelope": true,
+  "params": [
+    { "id": "ESP", "label": "ESP", "min": 26, "max": 60, "step": 2, "default": 26, "unit": "ms", "title": { "pt": "espaçamento entre ecos", "en": "echo spacing" } },
+    { "id": "order", "type": "select", "default": "linear", "label": { "pt": "ordem de k_y", "en": "k_y order" },
+      "options": [
+        { "value": "linear", "label": { "pt": "linear (−(N−1)/2…+(N−1)/2)", "en": "linear (−(N−1)/2…+(N−1)/2)" }, "values": { "pe": "range(-HALF, HALF, 1)" } },
+        { "value": "centric", "label": { "pt": "centro primeiro", "en": "center first" }, "values": { "pe": "centric(HALF)" } },
+        { "value": "centerLast", "label": { "pt": "centro por último", "en": "center last" }, "values": { "pe": "rev(centric(HALF))" } }
+      ] }
+  ],
+  "constants": { "w": 5, "tLead": 2, "tauPre": 6, "tauPe": 4, "tauRo": 12, "tTail": 30 },
+  "shots": 1,
+  "vars": { "Apre": "N/2", "NECHO": "N", "t90": "tLead + w/2", "tActive": "t90 + NECHO*ESP + tauRo/2 + tauPe", "iTE": "indexOf(pe, 0)", "TEeff": "(iTE + 1)*ESP" },
+  "TR": "tActive + tTail",
+  "events": [
+    { "type": "rf", "t": "tLead", "dur": "w", "flip": 90, "axis": "y", "desc": { "pt": "pulso de 90° (rotação em torno de y)", "en": "90° pulse (rotation about y)" } },
+    { "type": "grad", "axis": "x", "t": "tLead + w", "dur": "tauPre", "area": "Apre", "desc": { "pt": "pré-fase de leitura (Gfe): kₓ vai a +${N/2}", "en": "readout prephaser (Gfe): kₓ goes to +${N/2}" } },
+    { "type": "repeat", "count": "NECHO", "var": "i",
+      "vars": { "t180": "t90 + ESP/2 + i*ESP", "tEcho": "t90 + (i + 1)*ESP", "step": "pe[i]", "roStart": "tEcho - tauRo/2" },
+      "events": [
+        { "type": "band", "t": "t180", "label": { "pt": "eco ${i+1} · k_y = ${+step}", "en": "echo ${i+1} · k_y = ${+step}" } },
+        { "type": "rf", "t": "t180 - w/2", "dur": "w", "flip": 180, "axis": "x", "refocus": true, "desc": { "pt": "pulso de 180° (rotação em torno de x): fases invertidas, k → −k; kₓ = ${-N/2}", "en": "180° pulse (rotation about x): phases reversed, k → −k; kₓ = ${-N/2}" } },
+        { "type": "grad", "axis": "y", "t": "roStart - tauPe", "dur": "tauPe", "area": "step", "label": "${+step}", "desc": { "pt": "codificação de fase (Gpe): k_y vai a ${+step}", "en": "phase encoding (Gpe): k_y goes to ${+step}" } },
+        { "type": "grad", "axis": "x", "t": "roStart", "dur": "tauRo", "area": "N", "desc": { "pt": "leitura: Gfe varre kₓ de ${-N/2} a +${N/2}", "en": "readout: Gfe sweeps kₓ from ${-N/2} to +${N/2}" } },
+        { "type": "adc", "t": "roStart", "dur": "tauRo", "n": "N", "desc": { "pt": "amostras em kₓ = ${-HALF}…+${HALF}", "en": "samples at kₓ = ${-HALF}…+${HALF}" } },
+        { "type": "grad", "axis": "y", "t": "roStart + tauRo", "dur": "tauPe", "area": "-step", "desc": { "pt": "rebobinador de Gpe: k_y volta a 0 antes do próximo 180°", "en": "Gpe rewinder: k_y back to 0 before the next 180°" } }
+      ] },
+    { "type": "arrow", "t": "t90 + ESP/2", "to": "t90 + 3*ESP/2", "label": "ESP", "sub": { "pt": "espaçamento entre ecos", "en": "echo spacing" }, "style": "esp", "level": 0 },
+    { "type": "arrow", "t": "t90", "to": "t90 + TEeff", "label": "T_{E,ef}", "style": "te", "level": 1 },
+    { "type": "mark", "t": "t90", "style": "te", "level": 1 },
+    { "type": "mark", "t": "t90 + TEeff", "style": "te", "level": 1 },
+    { "type": "mark", "t": "t90 + ESP/2", "style": "esp" },
+    { "type": "mark", "t": "t90 + 3*ESP/2", "style": "esp" }
+  ],
+  "notes": {
+    "pt": [
+      "Sequência: 90° em torno de y, pré-fasador de leitura (+N/2 Δk) antes do primeiro 180°, depois um trem de N pulsos de 180° em torno de x (condição CPMG: o eixo do pulso de refocalização coincide com a magnetização excitada), espaçamento ESP. Cada eco adquire uma linha k_y: passo de Gpe logo antes da leitura, leitura (+N Δk), rebobinador (−passo) que devolve k_y a 0 antes do próximo 180°. As leituras se equilibram sozinhas através dos 180°: kₓ = +N/2 ao fim de uma leitura vira −N/2 no pulso seguinte.",
+      "A linha tracejada no sinal é a envoltória e^{−t/T2} do máximo possível (|S| ≤ ΣM₀); só o eco com k_y = 0 a toca, os outros são componentes de Fourier menores.",
+      "Cada linha é adquirida com um TE diferente, logo com peso e^{−TE_n/T2} diferente: o decaimento vira um filtro W(k_y) multiplicando o espaço k, e a imagem reconstruída é a convolução do objeto com a transformada do filtro. A ordem de k_y decide qual eco cai em k_y = 0 (TE efetivo, a seta verde): linear → ESP·(N+1)/2, centro primeiro → ESP (filtro passa-baixa, borramento em y), centro por último → N·ESP (realce de bordas e ringing). A Fourier reversa mostra cada modo com a amplitude que o T2 deixou.",
+      "Com 180° exatos, k → −k em cada pulso marca a trajetória. Outros ângulos de refocalização não são expostos: com um isocromato por pixel, caminhos de coerência desfasados por múltiplos de N Δk se repetem exatamente (aliasing da grade de N pontos) e seriam mostrados como refocalizados."
+    ],
+    "en": [
+      "Sequence: 90° about y, readout prephaser (+N/2 Δk) before the first 180°, then a train of N 180° pulses about x (CPMG: the refocusing axis coincides with the excited magnetization), echo spacing ESP. Each echo acquires one k_y line: Gpe step right before the readout, readout (+N Δk), rewinder (−step) returning k_y to 0 before the next 180°. The readouts balance themselves across the 180°s: kₓ = +N/2 at the end of a readout becomes −N/2 at the next pulse.",
+      "The dashed line in the signal row is the envelope e^{−t/T2} of the largest possible signal (|S| ≤ ΣM₀); only the echo with k_y = 0 touches it, the others are smaller Fourier components.",
+      "Each line is acquired at a different TE, hence with a different weight e^{−TE_n/T2}: the decay becomes a filter W(k_y) multiplying k-space, and the reconstructed image is the object convolved with the filter's transform. The k_y order decides which echo lands on k_y = 0 (effective TE, the green arrow): linear → ESP·(N+1)/2, center first → ESP (low-pass filter, blurring along y), center last → N·ESP (edge enhancement and ringing). The inverse Fourier shows each mode with the amplitude T2 left it.",
+      "With exact 180°s, k → −k at every pulse marks the trajectory. Other refocusing angles are not exposed: with one isochromat per pixel, coherence pathways dephased by multiples of N Δk repeat exactly (aliasing of the N-point grid) and would be shown as refocused."
+    ]
+  }
+}

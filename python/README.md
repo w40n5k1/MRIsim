@@ -1,0 +1,95 @@
+# mrisim — didactic MRI sequence simulator (Python)
+
+Self-contained Python port of the Sequence Lab page: the same physics, the same sequence files, a tissue
+dictionary and phantom files, with matplotlib views and an animation. Made to be forked and extended.
+
+```
+tissues.json          tissue dictionary: key -> {name, pd, T1, T2 (ms, 3 T), color}
+phantoms/*.json       tissue maps as shapes on a background (rendered at any odd N)
+sequences/*.json      pulse sequences (spin_echo, fast_spin_echo, flair); same files as the browser version
+mrisim/engine.py      expressions, sequence compiler (JSON -> schedule), Bloch simulation
+mrisim/phantoms.py    tissue dictionary and phantom rendering
+mrisim/recon.py       inverse DFT by conjugate-pair modes, ideal contrast image, residual
+mrisim/plot.py        diagram, pixel array, k-space, image panels, static overview figure, animation to file
+mrisim/viewer.py      interactive window: sequence / phantom / N / parameter selectors, time slider and play, cell mode,
+                      mode-by-mode Fourier, residual gain
+mrisim/__main__.py    command line
+tests/test_engine.py  samples = DFT(M0) x decay check; sample-by-sample cross-check with the JavaScript engine
+```
+
+Requirements: Python 3.10+, numpy, matplotlib (pillow for .gif, ffmpeg for .mp4); pytest for the tests.
+
+## Use
+
+```
+python -m mrisim                                                   # interactive viewer (all sequences and phantoms in the two folders)
+python -m mrisim --static                                          # static overview instead
+python -m mrisim --sequence sequences/flair.json --phantom phantoms/brain.json -N 9 --param TI=600 --out flair.png
+python -m mrisim --sequence sequences/fast_spin_echo.json --param order=centric --animate fse.gif
+```
+
+```python
+from mrisim import *
+tissues = load_tissues("tissues.json")
+ph  = load_phantom("phantoms/brain.json", N=9, tissues=tissues)         # ph.M0, ph.T1, ph.T2, ph.label per pixel
+S   = compile_sequence(load_json("sequences/flair.json"), {"TI": 2750}, lang="pt", N=9)
+sim = simulate(S, ph.M0, ph.T1, ph.T2)      # sim.times, sim.Mx/My/Mz (Nt x N^2), sim.signal, sim.kx/ky, sim.samples
+rec = reconstruct(sim)                      # rec.modes (DC + conjugate pairs), rec.image, rec.ideal, rec.residual
+fig, rec = overview(sim, ph, t=2790)        # static: diagram + panels at a cursor time
+view(sim, ph)                               # interactive viewer for this one simulation
+lab(N=9, lang="en")                         # viewer with selectors; lab(sequences_dir, phantoms_dir, tissues_path, ...)
+```
+
+`sim.samples` is the list of acquired k-space points: `{t, shot, adc, j, idx, kx, ky, S}`; `sim.kspace()` puts
+them on the N x N grid. `rec.partial(n)` is the sum of the first n modes (increasing |k|), for the mode-by-mode
+reconstruction.
+
+## Model (common to both versions)
+
+Rotating frame at the Larmor frequency; N x N isochromats, one per pixel, at x, y in {-(N-1)/2, ..., (N-1)/2};
+transverse magnetization precesses only under gradients, m -> m exp(-i 2 pi (dkx x + dky y)/N), k in units of
+1/FOV, so the samples are the forward DFT of the pixel magnetizations; hard RF pulses whose angle accrues linearly
+over the pulse width (relaxation suspended meanwhile); exponential relaxation per pixel; signal S = sum of
+(Mx + i My). The k label follows the magnetization created by the latest excitation (reset to 0 at its center,
+k -> -k at a refocusing pulse); whatever transverse magnetization survives from earlier shots keeps its own phase and
+enters the samples as a ghost, which is what the spoiler removes. Idle gaps (TR tails, the TI wait) use a coarse time grid and are drawn compressed. Reconstruction:
+image(r) = (1/N^2) sum_k S(k) exp(+2 pi i k.r/N), grouped in conjugate pairs; the residual compares |image| with
+the sequence's ideal contrast image (each pixel's |M_perp| at the k = 0 sample).
+
+## Sequence file format (didactic-mri-sequence/1)
+
+Top level: id, name, subtitle, lead, notes (string or {pt, en}); relax {T1, T2} (suggested global values);
+phantom (suggested); params (controls: slider {id, label, min, max, step, default, unit}, checkbox, select with
+options whose `values` become variables); constants; tables; vars (derived, in order); shots; TR; shotVars;
+shotLabel; envelope; events.
+
+Events, per shot, times in ms relative to the shot start, any number may be an expression string:
+```
+{"type": "rf",    "t", "dur", "flip", "axis": "x"|"y", "refocus": true?, "desc"}     refocus: k -> -k at the center
+{"type": "grad",  "axis": "x"|"y", "t", "dur", "area", "label"?, "ghost"?, "desc"}    area in dk
+{"type": "adc",   "t", "dur", "n", "label"?, "desc"}                                  n samples at sub-interval centers
+{"type": "spoil", "t", "if"?}                                                         transverse magnetization zeroed
+{"type": "repeat", "count", "var", "vars"?, "events"}
+{"type": "band",  "t", "label"}      {"type": "arrow", "t", "to", "label", "sub"?, "style", "level"}      {"type": "mark", "t", "label"?, "style", "level"?}
+```
+Expressions see params, constants, tables, vars, N, HALF = (N-1)/2, the shot index n, loop variables, and the
+helpers range(a, b, step), centric(H), indexOf(list, v), rev(list), plus min/max/abs/exp/log/sqrt/pi. This subset is
+common to the Python and JavaScript engines; keep to it so files stay portable. Labels support a_b, a_{bc}, a^b.
+Expressions are evaluated as code (Python eval / JavaScript Function): load only files from a known source.
+
+## Phantom file format (didactic-mri-phantom/1)
+
+```
+{"id", "name", "background": "air", "pd": "0.2 + 0.8*(x + 1)/2"?,
+ "shapes": [{"type": "rect", "tissue": "gm", "x": [x0, x1], "y": [y0, y1]},
+            {"type": "disk", "tissue": "csf", "center": [cx, cy], "r": r}]}
+```
+Coordinates are normalized to [-1, 1] over the field of view (pixel centers at x = (col - H)/(N/2)); shapes are
+painted in order; a disk covers at least its nearest pixel; `pd` is an optional proton-density factor in x, y.
+
+## Extending
+
+A new sequence is a new JSON file (copy one and edit); a new tissue is a line in tissues.json; a new phantom is a
+list of shapes. For physics beyond the model (several isochromats per pixel for T2* and imperfect refocusing,
+slice profiles, off-resonance, noise) edit `simulate` in engine.py: it is a plain loop over the time grid with
+numpy arrays over pixels.

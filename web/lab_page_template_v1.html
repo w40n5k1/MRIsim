@@ -1,0 +1,816 @@
+<title>Sequence Lab 5×5</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one column; the figure is "paper" (fixed light colors, exportable), the two panes below follow the theme. */
+:root {
+  --bg: #f1f4f8; --fg: #1b2330; --muted: #5c687a; --panel: #ffffff; --panel2: #e9edf3; --line: #cfd7e2;
+  --accent: #1d4f91; --segOff: #7383a0; --cursor: #c2185b; --vecM: #d62828; --vecC: #1d5fd1; --sphere: #8b5cf6; --equator: #7c3aed;
+  --font: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f141b; --fg: #e5eaf1; --muted: #9aa6b8; --panel: #171e28; --panel2: #202a37; --line: #2d3947;
+  --accent: #3f74c4; --segOff: #4b5a70; --cursor: #ff5c9a; --vecM: #ff5a5a; --vecC: #6b9bff; --sphere: #a78bfa; --equator: #b79cff; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #0f141b; --fg: #e5eaf1; --muted: #9aa6b8; --panel: #171e28; --panel2: #202a37; --line: #2d3947;
+  --accent: #3f74c4; --segOff: #4b5a70; --cursor: #ff5c9a; --vecM: #ff5a5a; --vecC: #6b9bff; --sphere: #a78bfa; --equator: #b79cff; color-scheme: dark; }
+body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 14px 32px; }
+* { box-sizing: border-box; }
+h1 { font-size: 1.45rem; font-weight: 700; margin: 0; letter-spacing: -0.01em; text-wrap: balance; }
+h1 small { font-weight: 400; color: var(--muted); font-size: 0.95rem; }
+.h1sel { font: inherit; font-size: 1.45rem; font-weight: 700; color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; cursor: pointer; }
+.h1sel:hover { border-color: var(--accent); }
+#seqParams { display: contents; }
+.controls .err { color: #c62828; font-family: var(--mono); font-size: 0.85rem; }
+.legend canvas { width: 160px; height: 160px; flex: 0 0 160px; }
+input[type=file] { display: none; }
+h1 .ver { font-family: var(--mono); font-weight: 500; font-size: 0.75rem; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 1px 6px; vertical-align: middle; }
+h2 { font-size: 0.92rem; font-weight: 600; margin: 0 0 6px; }
+p { margin: 0; }
+header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 16px; max-width: 1450px; margin: 0 auto 12px; }
+.lead { color: var(--muted); max-width: 70ch; }
+main { max-width: 1450px; margin: 0 auto; display: grid; gap: 14px; }
+.figure { background: #fff; border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; padding: 6px 4px; }
+.figure svg { display: block; width: 100%; height: auto; min-width: 980px; cursor: crosshair; touch-action: none; }
+.figure svg .trh { font-weight: 400; }
+.figure svg .trh.on { font-weight: 700; }
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; }
+.controls .grp { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.controls label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--fg); }
+.controls label .v { font-family: var(--mono); font-variant-numeric: tabular-nums; min-width: 5.2ch; text-align: right; color: var(--accent); }
+button { font: inherit; font-weight: 500; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 5px 11px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+button.primary { background: var(--accent); color: #fff; border-color: transparent; min-width: 6.5em; }
+input[type=range] { width: 110px; accent-color: var(--accent); }
+select { font: inherit; font-size: 1rem; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 4px 6px; }
+option { font: inherit; font-size: 1rem; font-weight: 400; color: var(--fg); background: var(--panel2); padding: 4px 6px; }   /* the drop-down list does not inherit the select's font reliably */
+.h1sel option { font-size: 1.05rem; font-weight: 500; }
+/* custom drop-downs: the native list is rendered by the OS and may ignore page fonts and DPI; the select stays in the
+   DOM (state, change events) and a button + in-page list replace its popup */
+.dd { position: relative; display: inline-block; }
+.dd > select { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+.ddbtn { font: inherit; font-size: 1.05rem; color: var(--fg); background: var(--panel2); border: 1px solid var(--line); border-radius: 5px; padding: 4px 28px 4px 8px; cursor: pointer; text-align: left; white-space: nowrap; position: relative; }
+.ddbtn::after { content: ""; position: absolute; right: 10px; top: 50%; width: 7px; height: 7px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: translateY(-70%) rotate(45deg); }
+.ddbtn:hover { border-color: var(--accent); }
+.dd.h1 .ddbtn { font-size: 1.45rem; font-weight: 700; background: var(--panel); border-radius: 6px; padding: 2px 34px 2px 10px; }
+.ddlist { position: absolute; top: calc(100% + 3px); left: 0; z-index: 60; min-width: 100%; background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 6px 20px rgba(0,0,0,.25); padding: 4px; display: none; max-height: 60vh; overflow: auto; font-size: 1.1rem; font-weight: 400; line-height: 1.35; }
+.ddlist.open { display: block; }
+.ddlist [role=option] { padding: 7px 14px; white-space: nowrap; cursor: pointer; border-radius: 4px; color: var(--fg); }
+.ddlist [role=option]:hover, .ddlist [role=option].cur { background: var(--accent); color: #fff; }
+.status { font-family: var(--mono); font-size: 0.85rem; color: var(--muted); padding: 0 4px; line-height: 1.4; font-variant-numeric: tabular-nums; }
+#status { height: 2.8em; overflow: hidden; }   /* always exactly two lines: the panes below never shift */
+.status b { color: var(--fg); font-weight: 500; }
+.controls .fstatus { padding: 0; flex: 1 1 220px; }
+.panes { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 14px; }
+.pane { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px 12px; min-width: 0; }
+.pane h2 { line-height: 1.3; min-height: 1.3em; margin: 0 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pane .foot { display: grid; gap: 8px; margin-top: 10px; }
+.gainrow { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+[hidden] { display: none !important; }
+canvas { display: block; width: 100%; max-width: 100%; }
+.seg { display: inline-flex; border-radius: 6px; overflow: hidden; font-size: 0.82rem; justify-self: start; }
+.seg label { padding: 4px 11px; cursor: pointer; color: #fff; background: var(--segOff); display: inline-flex; align-items: center; gap: 5px; }
+.seg label.on { background: var(--accent); font-weight: 600; }
+.seg label:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg input { position: absolute; opacity: 0; width: 0; height: 0; }
+.pane .sub { color: var(--muted); font-size: 0.8rem; }
+.tissues { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.78rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.tissues span { display: inline-flex; align-items: center; gap: 5px; }
+.tissues i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--line); }
+.legend { display: flex; align-items: center; gap: 10px; margin-top: 8px; color: var(--muted); font-size: 0.8rem; }
+.legend .samp { font-family: var(--mono); color: var(--fg); font-variant-numeric: tabular-nums; }
+details { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 12px; }
+summary { cursor: pointer; font-weight: 600; }
+details ul { margin: 6px 0 2px; padding-left: 1.2em; max-width: 90ch; color: var(--fg); }
+details li { margin: 3px 0; }
+.eqs { display: grid; gap: 10px; margin: 8px 0 4px; max-width: 95ch; }
+.eqs h3 { font-size: 0.9rem; margin: 0 0 3px; }
+.eqs p { margin: 2px 0; line-height: 1.6; }
+.eqs .m { font-family: 'IBM Plex Serif', 'Times New Roman', serif; font-style: italic; }
+.eqs .m sub, .eqs .m sup { font-style: normal; font-size: 0.72em; }
+.eqs .r { font-style: normal; }
+kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<header>
+  <h1 id="h1"><select id="seqSel" class="h1sel"></select> <small id="sub"></small> <span class="ver">v1</span></h1>
+  <p class="lead" id="lead"></p>
+</header>
+<main>
+  <section class="figure"><div id="figwrap"></div></section>
+  <section class="controls">
+    <div class="grp">
+      <button class="primary" id="play"></button>
+      <button id="reset"></button>
+      <button id="prev" title="←"></button>
+      <button id="next" title="→"></button>
+    </div>
+    <div class="grp">
+      <label><span id="lSpeed"></span> <input type="range" id="speed" min="2" max="120" step="1" value="10"><span class="v" id="vSpeed"></span></label>
+    </div>
+    <div class="grp">
+      <span id="seqParams"></span>
+      <label><input type="checkbox" id="relaxOverride"> <span id="lRelaxOverride"></span></label>
+      <label>T1 <input type="range" id="T1" min="10" max="1010" step="10" value="80"><span class="v" id="vT1"></span></label>
+      <label>T2 <input type="range" id="T2" min="5" max="505" step="5" value="60"><span class="v" id="vT2"></span></label>
+    </div>
+    <div class="grp">
+      <label><span id="lPhantom"></span> <select id="phantom"><option value="squareAir" selected></option><option value="letterFAir"></option><option value="uniform"></option><option value="square"></option><option value="letterF"></option><option value="ramp"></option><option value="brain"></option></select></label>
+      <label>N <select id="nsel"><option>3</option><option selected>5</option><option>7</option><option>9</option><option>11</option><option>13</option><option>15</option></select></label>
+      <label><input type="checkbox" id="linear"> <span id="lLinear"></span></label>
+      <label><input type="checkbox" id="compress" checked> <span id="lCompress"></span></label>
+      <button id="copysvg"></button>
+      <button id="loadseq"></button><input type="file" id="seqfile" accept=".json,application/json">
+      <button id="copyseq"></button>
+      <button id="lang">EN</button>
+    </div>
+    <div class="err" id="err"></div>
+    <div class="grp" hidden>
+    </div>
+  </section>
+  <div class="status" id="status"></div>
+  <section class="panes">
+    <div class="pane">
+      <h2 id="tSpins"></h2>
+      <canvas id="spins"></canvas>
+      <div class="foot">
+        <div class="seg" role="radiogroup"><label id="labDensity" class="on"><input type="radio" name="cellmode" id="modeDensity" value="density" checked><span id="lModeDensity"></span></label><label id="labPhase"><input type="radio" name="cellmode" id="modePhase" value="phase"><span id="lModePhase"></span></label><label id="labTissue"><input type="radio" name="cellmode" id="modeTissue" value="tissue"><span id="lModeTissue"></span></label></div>
+        <div class="tissues" id="tissueLegend"></div>
+        <div class="sub" id="sSpins"></div>
+      </div>
+    </div>
+    <div class="pane">
+      <h2 id="tK"></h2>
+      <canvas id="kspace"></canvas>
+      <div class="foot">
+        <div class="legend"><canvas id="wheel"></canvas><div class="samp" id="lastSample"></div></div>
+      </div>
+    </div>
+  </section>
+  <section class="controls">
+    <div class="grp">
+      <button class="primary" id="fplay"></button>
+      <button id="freset"></button>
+      <button id="fprev"></button>
+      <button id="fnext"></button>
+    </div>
+    <div class="grp">
+      <label><span id="lFspeed"></span> <input type="range" id="fspeed" min="1" max="200" step="1" value="10"><span class="v" id="vFspeed"></span></label>
+    </div>
+    <div class="status fstatus" id="fstatus"></div>
+  </section>
+  <section class="panes">
+    <div class="pane">
+      <h2 id="tImg"></h2>
+      <canvas id="img"></canvas>
+      <div class="foot"><div class="sub" id="sImg"></div></div>
+    </div>
+    <div class="pane">
+      <h2 id="tMode"></h2>
+      <canvas id="mode"></canvas>
+      <div class="foot">
+        <div class="gainrow" id="gainRow" hidden><span class="sub" id="lGain"></span>
+          <div class="seg" role="radiogroup" id="gainSeg"><label class="on"><input type="radio" name="rgain" value="1" checked><span>×1</span></label><label><input type="radio" name="rgain" value="10"><span>×10</span></label><label><input type="radio" name="rgain" value="100"><span>×100</span></label><label><input type="radio" name="rgain" value="1000"><span>×1000</span></label></div>
+        </div>
+        <div class="sub" id="sMode"></div>
+      </div>
+    </div>
+  </section>
+  <details><summary id="tNotes"></summary><ul id="notes"></ul></details>
+  <details><summary id="tEq"></summary><div id="eqs" class="eqs"></div></details>
+</main>
+
+<script>/*__ENGINE__*/</script>
+<script>/*__DRAW__*/</script>
+<script>/*__TISSUES__*/</script>
+<script>/*__SEQS__*/</script>
+<script>
+(function () {
+'use strict';
+const $ = id => document.getElementById(id);
+const I18N = {
+  pt: {
+    play: '▶ Aquisição', pause: '❚❚ Pausar', reset: '⟲ Início', prev: '◀ evento', next: 'evento ▶', speed: 'velocidade',
+    phantom: 'objeto', squareAir: 'quadrado (cheio/vazio)', letterFAir: 'letra F (cheio/vazio)', uniform: 'uniforme (SC)', square: 'quadrado (SC sobre SB)', letterF: 'letra F (SC sobre SB)', ramp: 'rampa de M₀ (SC)', brain: 'cérebro', uniformDesc: '', 
+    modeDensity: 'intensidade', modePhase: 'intensidade + fase', modeTissue: 'tecido', relaxOverride: 'T1/T2 globais (ignorar tecidos)', tissueHdr: 'tecido: PD · T1 · T2 (ms, 3 T)', linear: 'intensidade linear (sem √)', compress: 'comprimir TR', loadseq: 'carregar sequência (.json)', copyseq: 'copiar JSON da sequência', lang: 'EN', copy: 'copiar SVG do diagrama', copied: 'copiado ✓', copyFail: 'falhou — selecione e copie',
+    tSpins: n => `Matriz ${n}×${n} de pixels (referencial girante)`, sSpinsDensity: 'cinza = densidade de prótons M₀ · vermelho: M · azul: M∥ (z) e M⊥ (xy)', sSpinsTissue: 'cor = tecido (T1, T2 e M₀ próprios) · vermelho: M · azul: M∥ (z) e M⊥ (xy)', sSpinsPhase: 'cor = fase de M⊥ · intensidade = |M⊥| · vermelho: M · azul: M∥ (z) e M⊥ (xy)',
+    tK: 'Espaço k (kₓ, k_y)', peDesc: 'codificação por fase', feDesc: 'codificação por frequência', envDesc: 'e<tspan dy="-5" font-size="8">−t/T2</tspan>',
+    fplay: '▶ Fourier reversa', fpause: '❚❚ Pausar', freset: '⟲ Início', fprev: '◀ modo', fnext: 'modo ▶', fspeed: 'velocidade', fspeedUnit: 'modos/s',
+    tImg: 'Imagem', tMode: 'Modo', tResid: 'Resíduo',
+    sImgIdle: '|Σ dos modos adicionados| (imagem em módulo, como no scanner) · branco = máximo da reconstrução completa',
+    sImg: (s, n, nm, np) => `|Σ de ${s}/${nm} modos| (módulo) · ${n}/${np} amostras · branco = máximo da reconstrução completa`,
+    sModeIdle: 'aguardando a Fourier reversa',
+    sModeDC: (z) => `modo (0, 0): constante · × |S(0,0)| = ${z} ΣM₀ (vermelho = real positivo)`,
+    sMode: (kx, ky, z, ph) => `modo (kₓ, k_y) = (${kx}, ${ky}) e (${-kx}, ${-ky}): cos[2π(kₓx + k_yy)/5 + φ], padrão normalizado, φ = ${ph}° · × |S(k) + S(−k)*| = ${z} ΣM₀ (soma do par, real positiva: vermelho)`,
+    lGain: 'ganho do resíduo', sResid: (rmax, g) => `resíduo = imagem/c − imagem ideal, onde a imagem ideal é |M⊥| de cada pixel no eco central (o contraste que a sequência pretende, sem o filtro do espaço k) e c um fator de escala por mínimos quadrados · mesma escala de cinza da imagem, cinza médio = 0, ganho ×${g} · máx |Δ| = ${rmax} do máximo ideal`,
+    sResid0: 'resíduo = imagem/c − imagem ideal · ≈ 0 (reconstrução exata)',
+    fIdle: 'pronto (usa as amostras já adquiridas)', fRun: (s, kx, ky, nm) => `modo ${s}/${nm} · (kₓ, k_y) = ±(${kx}, ${ky})`, fDone: nm => `${nm}/${nm} · reconstrução completa`,
+    legend: 'cor = fase de S(kₓ,k_y) · intensidade = |S|', legendLin: 'cor = fase de S(kₓ,k_y) · intensidade = |S| (linear)',
+    seg: { rest: 'repouso: M₀ ao longo de +z', free: 'evolução livre (decaimento T2, recuperação T1)', tail: 'relaxação até o fim da repetição', end: 'aquisição completa', rf: (a, ax) => `pulso de ${a}° em torno de ${ax}`, grad: ax => `gradiente em ${ax}`, adc: 'leitura' },
+    status: (t, band, kx, ky, seg) => `t = <b>${t}</b> ms · ${band}k = (<b>${kx}</b>, <b>${ky}</b>) · ${seg}`,
+    phase: 'fase', mag: '|S|',
+    errSeq: 'sequência inválida: ', loaded: 'sequência carregada: ', copied2: 'copiado ✓',
+    last: (kx, ky, mag, ph) => `último: S(${kx}, ${ky}) = ${mag} ∠ ${ph}°`,
+    tEq: 'Equações: o que é calculado em cada painel',
+    eqs: [
+      ['Diagrama da sequência', [
+        'Espaço k percorrido pelos gradientes: <span class="m">k<sub>x</sub>(t) = (γ/2π) ∫<sub>0</sub><sup>t</sup> G<sub>x</sub>(t′) dt′</span>, idem em y; em unidades de Δk = 1/FOV, a área de cada lobo é o Δk que ele move. Num pulso de refocalização ideal, <span class="m">k → −k</span> no centro do pulso.',
+        'Sinal: <span class="m">S(t) = Σ<sub>p</sub> [M<sub>x,p</sub>(t) + i M<sub>y,p</sub>(t)]</span> sobre os N² pixels (parte real em azul, |S| como envoltória). As amostras são tomadas nos centros dos N intervalos de dwell da leitura, onde k<sub>x</sub> é inteiro.'
+      ]],
+      ['Matriz de pixels', [
+        'Equações de Bloch no referencial girante, pixel p em (x<sub>p</sub>, y<sub>p</sub>), com <span class="m">M<sub>⊥</sub> = M<sub>x</sub> + i M<sub>y</sub></span>: <span class="m">dM<sub>⊥</sub>/dt = −i·2π(G<sub>x</sub>x<sub>p</sub> + G<sub>y</sub>y<sub>p</sub>)(γ/2π)·M<sub>⊥</sub> − M<sub>⊥</sub>/T2</span>, <span class="m">dM<sub>z</sub>/dt = (M<sub>0</sub> − M<sub>z</sub>)/T1</span>. Num passo em que k avança (Δk<sub>x</sub>, Δk<sub>y</sub>): <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub> e<sup>−iΔφ</sup>, Δφ = 2π(Δk<sub>x</sub>x<sub>p</sub> + Δk<sub>y</sub>y<sub>p</sub>)/N</span>; relaxação: <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub>e<sup>−Δt/T2</sup>, M<sub>z</sub> → M<sub>0</sub> + (M<sub>z</sub> − M<sub>0</sub>)e<sup>−Δt/T1</sup></span>.',
+        'Pulsos (duros): rotação de ângulo θ em torno do eixo do pulso; 90° em y: <span class="m">(M<sub>x</sub>, M<sub>z</sub>) → (M<sub>z</sub>, −M<sub>x</sub>)</span> (+z → +x); 180° de inversão em repouso: <span class="m">M<sub>z</sub> → −M<sub>z</sub></span>, e depois <span class="m">M<sub>z</sub>(t) = M<sub>0</sub>(1 − 2e<sup>−t/T1</sup>)</span>, nulo em t = T1·ln 2; 180° em x: <span class="m">(M<sub>y</sub>, M<sub>z</sub>) → (−M<sub>y</sub>, −M<sub>z</sub>)</span>, isto é, <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub><sup>*</sup></span>. O ângulo cresce linearmente ao longo da largura do pulso, sem relaxação nem gradientes nesse intervalo.',
+        'Cor da célula (modo intensidade + fase): matiz = <span class="m">arg M<sub>⊥</sub></span>, intensidade = <span class="m">√(|M<sub>⊥</sub>|/M<sub>0,max</sub>)</span> (ou linear). Modo intensidade: cinza = M<sub>0</sub>.'
+      ]],
+      ['Espaço k', [
+        'Cada amostra é <span class="m">S(t)</span> no instante em que <span class="m">k(t) = (k<sub>x</sub>, k<sub>y</sub>)</span> é inteiro. Como cada pixel carrega a fase <span class="m">−2π k·r<sub>p</sub>/N</span> acumulada pelos gradientes, <span class="m">S(k) = Σ<sub>p</sub> m<sub>p</sub> e<sup>−2πi(k<sub>x</sub>x<sub>p</sub> + k<sub>y</sub>y<sub>p</sub>)/N</sup></span>: a DFT direta das magnetizações, com <span class="m">m<sub>p</sub> = M<sub>0,p</sub>·(M<sub>z</sub> disponível/M<sub>0</sub>)·e<sup>−TE<sub>linha</sub>/T2</sup></span> para pulsos ideais.',
+        'Cor: matiz = <span class="m">arg S(k)</span> (0 = vermelho, π/2 = verde-amarelo, π = ciano, −π/2 = azul-violeta), intensidade = <span class="m">√(|S(k)|/ΣM<sub>0</sub>)</span> (ou linear), a mesma codificação da bola da legenda. O marcador é k(t); o salto tracejado é o k → −k do 180°.'
+      ]],
+      ['Imagem real (Fourier reversa)', [
+        '<span class="m">ρ(r) = (1/N²) Σ<sub>k</sub> S(k) e<sup>+2πi k·r/N</sup></span>. Agrupando cada par conjugado {k, −k}: <span class="m">Z<sub>k</sub> = S(k) + S(−k)<sup>*</sup></span>, <span class="m">A<sub>k</sub> = |Z<sub>k</sub>|/N²</span>, <span class="m">φ<sub>k</sub> = arg Z<sub>k</sub></span>, e a contribuição real do par é <span class="m">A<sub>k</sub> cos(2π k·r/N + φ<sub>k</sub>)</span>; o termo DC é <span class="m">|S(0)|/N² · cos(arg S(0))</span>. Os (N²+1)/2 modos entram em ordem crescente de |k|; a soma é real por construção e a imagem mostra o seu módulo, como o scanner (tecidos com M<sub>z</sub> &lt; 0 no 90° aparecem claros). Branco = máximo da reconstrução completa.'
+      ]],
+      ['Modo / Resíduo', [
+        'Modo: o padrão normalizado <span class="m">cos(2π k·r/N + φ<sub>k</sub>)</span> (cinza médio = 0); o quadradinho "×" é |Z<sub>k</sub>| na codificação do espaço k (sempre fase 0).',
+        'Resíduo: <span class="m">|ρ|/c − ρ<sub>ideal</sub></span>, com <span class="m">ρ<sub>ideal,p</sub> = |M<sub>⊥,p</sub>(t<sub>k=0</sub>)|</span> (o sinal de cada pixel no instante da amostra central: o contraste que a sequência pretende) e <span class="m">c = Σ<sub>p</sub> |ρ<sub>p</sub>|ρ<sub>ideal,p</sub> / Σ<sub>p</sub> ρ<sub>ideal,p</sub><sup>2</sup></span> (mínimos quadrados), mostrado na escala de cinza da imagem, cinza médio = 0, multiplicado pelo ganho. O que sobra é o efeito do filtro do espaço k: pesos desiguais entre linhas e truncamento.',
+        'Quando as linhas k<sub>y</sub> têm TE diferentes (fast spin echo), <span class="m">S<sub>med</sub>(k) = W(k<sub>y</sub>) S(k)</span> com <span class="m">W = e<sup>−TE(k<sub>y</sub>)/T2</sup></span>, logo <span class="m">ρ<sub>rec</sub> = w ∗ ρ</span>, <span class="m">w = F<sup>−1</sup>[W]</span>: o resíduo é o efeito dessa convolução.'
+      ]]
+    ],
+    notes: 'Modelo: o que é física e o que é simplificação didática',
+    noteList: [
+      'Modelo (comum a todas as sequências): referencial girante em ω₀, Δφ = 2π(Δkₓ·x + Δk_y·y)/N com x, y ∈ {−(N−1)/2,…,(N−1)/2} (N ímpar, seletor no painel), m → m·e^{−iΔφ}: as amostras são a DFT direta das magnetizações dos pixels. Pulsos duros, com o ângulo crescendo linearmente ao longo da largura só para a rotação ser visível; relaxação suspensa durante os pulsos. Relaxação: M⊥ ∝ e^{−t/T2}, M_z → M₀ + (M_z − M₀)e^{−t/T1}; cursores em ∞ desligam. Sinal S = Σ(Mₓ + iM_y) sobre os N² pixels (não normalizado). Até N = 9 cada pixel mostra a esfera de Bloch; acima, só a cor da célula e, até N = 15, a seta de M⊥. A seleção de fatia é tomada como já feita.',
+      'Objetos são mapas de tecidos: cada pixel tem um rótulo (subst. cinzenta, subst. branca, líquor, gordura, osso cortical, ar, lesão) que fixa sua densidade de prótons, T1 e T2 (dicionário tissues.json, valores aproximados a 3 T), mais um fator opcional de densidade (a rampa). Os objetos "cheio/vazio" são subst. cinzenta sobre ar: o caso mais simples, insensível a TE e TR, em que a intensidade do sinal se lê diretamente da soma das setas transversais dos pixels cheios. Os objetos "SC sobre SB" têm fundo com sinal, e aí o contraste entre figura e fundo depende da sequência (TE, TR, TI). A caixa "T1/T2 globais" substitui os valores dos tecidos pelos cursores, para experimentos como T2 = ∞.',
+      'Espaço k: cada célula é um intervalo de amostragem (dwell); a amostra fica no centro e a varredura de leitura cobre as células inteiras (−N/2 a +N/2). A cor é a fase de S e a intensidade |S|, na mesma codificação da bola da legenda. Em pulsos de refocalização ideais k → −k.',
+      'Fourier reversa: imagem(r) = (1/N²) Σ_k S(k) e^{+2πi k·r/N}; cada par conjugado {k, −k} dá uma onda real A cos(2π k·r/N + φ); (N²+1)/2 modos (DC + (N²−1)/2 pares) em ordem crescente de |k|. Resíduo = imagem/c − imagem ideal (|M⊥| de cada pixel no eco central), com c por mínimos quadrados: mede o filtro do espaço k, não o contraste.',
+      'Sequências são arquivos JSON (formato didactic-mri-sequence/1): parâmetros, constantes, variáveis derivadas e uma lista de eventos por repetição (rf, grad, adc, spoil, repeat, band, arrow, mark), com tempos e áreas como expressões. "Copiar JSON da sequência" exporta a sequência atual; "carregar sequência" lê uma do disco. As expressões são avaliadas como JavaScript: carregue só arquivos de origem conhecida.',
+      'Teclado: espaço = tocar/pausar, ← → = evento anterior/seguinte, Home = início.'
+    ]
+  },
+  en: {
+    play: '▶ Acquire', pause: '❚❚ Pause', reset: '⟲ Start', prev: '◀ event', next: 'event ▶', speed: 'speed',
+    phantom: 'phantom', squareAir: 'square (filled/empty)', letterFAir: 'letter F (filled/empty)', uniform: 'uniform (GM)', square: 'square (GM on WM)', letterF: 'letter F (GM on WM)', ramp: 'M₀ ramp (GM)', brain: 'brain', 
+    modeDensity: 'intensity', modePhase: 'intensity + phase', modeTissue: 'tissue', relaxOverride: 'global T1/T2 (ignore tissues)', tissueHdr: 'tissue: PD · T1 · T2 (ms, 3 T)', linear: 'linear intensity (no √)', compress: 'compress TR', loadseq: 'load sequence (.json)', copyseq: 'copy sequence JSON', lang: 'PT', copy: 'copy diagram SVG', copied: 'copied ✓', copyFail: 'failed — select and copy',
+    tSpins: n => `${n}×${n} pixel array (rotating frame)`, sSpinsDensity: 'gray = proton density M₀ · red: M · blue: M∥ (z) and M⊥ (xy)', sSpinsTissue: 'color = tissue (own T1, T2 and M₀) · red: M · blue: M∥ (z) and M⊥ (xy)', sSpinsPhase: 'color = phase of M⊥, intensity = |M⊥| · red: M · blue: M∥ (z) and M⊥ (xy)',
+    tK: 'k-space (kₓ, k_y)', peDesc: 'phase encoding', feDesc: 'frequency encoding', envDesc: 'e<tspan dy="-5" font-size="8">−t/T2</tspan>',
+    fplay: '▶ Inverse Fourier', fpause: '❚❚ Pause', freset: '⟲ Start', fprev: '◀ mode', fnext: 'mode ▶', fspeed: 'speed', fspeedUnit: 'modes/s',
+    tImg: 'Image', tMode: 'Mode', tResid: 'Residual',
+    sImgIdle: '|Σ of the added modes| (magnitude image, as on the scanner) · white = maximum of the full reconstruction',
+    sImg: (s, n, nm, np) => `|Σ of ${s}/${nm} modes| (magnitude) · ${n}/${np} samples · white = maximum of the full reconstruction`,
+    sModeIdle: 'waiting for the inverse Fourier',
+    sModeDC: (z) => `mode (0, 0): constant · × |S(0,0)| = ${z} ΣM₀ (red = real positive)`,
+    sMode: (kx, ky, z, ph) => `mode (kₓ, k_y) = (${kx}, ${ky}) and (${-kx}, ${-ky}): cos[2π(kₓx + k_yy)/5 + φ], normalized pattern, φ = ${ph}° · × |S(k) + S(−k)*| = ${z} ΣM₀ (pair sum, real positive: red)`,
+    lGain: 'residual gain', sResid: (rmax, g) => `residual = image/c − ideal image, where the ideal image is each pixel's |M⊥| at the central echo (the contrast the sequence intends, without the k-space filter) and c a least-squares scale factor · same gray scale as the image, mid-gray = 0, gain ×${g} · max |Δ| = ${rmax} of the ideal maximum`,
+    sResid0: 'residual = image/c − ideal image · ≈ 0 (exact reconstruction)',
+    fIdle: 'ready (uses the samples acquired so far)', fRun: (s, kx, ky, nm) => `mode ${s}/${nm} · (kₓ, k_y) = ±(${kx}, ${ky})`, fDone: nm => `${nm}/${nm} · reconstruction complete`,
+    legend: 'color = phase of S(kₓ,k_y) · intensity = |S|', legendLin: 'color = phase of S(kₓ,k_y) · intensity = |S| (linear)',
+    seg: { rest: 'rest: M₀ along +z', free: 'free evolution (T2 decay, T1 recovery)', tail: 'relaxation to the end of the repetition', end: 'acquisition complete', rf: (a, ax) => `${a}° pulse about ${ax}`, grad: ax => `gradient along ${ax}`, adc: 'readout' },
+    status: (t, band, kx, ky, seg) => `t = <b>${t}</b> ms · ${band}k = (<b>${kx}</b>, <b>${ky}</b>) · ${seg}`,
+    phase: 'phase', mag: '|S|',
+    errSeq: 'invalid sequence: ', loaded: 'sequence loaded: ', copied2: 'copied ✓',
+    last: (kx, ky, mag, ph) => `last: S(${kx}, ${ky}) = ${mag} ∠ ${ph}°`,
+    tEq: 'Equations: what is computed in each panel',
+    eqs: [
+      ['Sequence diagram', [
+        'k-space traversed by the gradients: <span class="m">k<sub>x</sub>(t) = (γ/2π) ∫<sub>0</sub><sup>t</sup> G<sub>x</sub>(t′) dt′</span>, likewise in y; in units of Δk = 1/FOV, the area of each lobe is the Δk it moves. At an ideal refocusing pulse, <span class="m">k → −k</span> at the pulse center.',
+        'Signal: <span class="m">S(t) = Σ<sub>p</sub> [M<sub>x,p</sub>(t) + i M<sub>y,p</sub>(t)]</span> over the N² pixels (real part in blue, |S| as the envelope). Samples are taken at the centers of the N dwell intervals of the readout, where k<sub>x</sub> is an integer.'
+      ]],
+      ['Pixel array', [
+        'Bloch equations in the rotating frame, pixel p at (x<sub>p</sub>, y<sub>p</sub>), with <span class="m">M<sub>⊥</sub> = M<sub>x</sub> + i M<sub>y</sub></span>: <span class="m">dM<sub>⊥</sub>/dt = −i·2π(G<sub>x</sub>x<sub>p</sub> + G<sub>y</sub>y<sub>p</sub>)(γ/2π)·M<sub>⊥</sub> − M<sub>⊥</sub>/T2</span>, <span class="m">dM<sub>z</sub>/dt = (M<sub>0</sub> − M<sub>z</sub>)/T1</span>. In a step where k advances by (Δk<sub>x</sub>, Δk<sub>y</sub>): <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub> e<sup>−iΔφ</sup>, Δφ = 2π(Δk<sub>x</sub>x<sub>p</sub> + Δk<sub>y</sub>y<sub>p</sub>)/N</span>; relaxation: <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub>e<sup>−Δt/T2</sup>, M<sub>z</sub> → M<sub>0</sub> + (M<sub>z</sub> − M<sub>0</sub>)e<sup>−Δt/T1</sup></span>.',
+        'Pulses (hard): rotation by θ about the pulse axis; 90° about y: <span class="m">(M<sub>x</sub>, M<sub>z</sub>) → (M<sub>z</sub>, −M<sub>x</sub>)</span> (+z → +x); inversion 180° at rest: <span class="m">M<sub>z</sub> → −M<sub>z</sub></span>, then <span class="m">M<sub>z</sub>(t) = M<sub>0</sub>(1 − 2e<sup>−t/T1</sup>)</span>, zero at t = T1·ln 2; 180° about x: <span class="m">(M<sub>y</sub>, M<sub>z</sub>) → (−M<sub>y</sub>, −M<sub>z</sub>)</span>, i.e. <span class="m">M<sub>⊥</sub> → M<sub>⊥</sub><sup>*</sup></span>. The angle grows linearly across the pulse width, with no relaxation or gradients in that interval.',
+        'Cell color (intensity + phase mode): hue = <span class="m">arg M<sub>⊥</sub></span>, intensity = <span class="m">√(|M<sub>⊥</sub>|/M<sub>0,max</sub>)</span> (or linear). Intensity mode: gray = M<sub>0</sub>.'
+      ]],
+      ['k-space', [
+        'Each sample is <span class="m">S(t)</span> at the instant when <span class="m">k(t) = (k<sub>x</sub>, k<sub>y</sub>)</span> is an integer. Since each pixel carries the phase <span class="m">−2π k·r<sub>p</sub>/N</span> accumulated by the gradients, <span class="m">S(k) = Σ<sub>p</sub> m<sub>p</sub> e<sup>−2πi(k<sub>x</sub>x<sub>p</sub> + k<sub>y</sub>y<sub>p</sub>)/N</sup></span>: the forward DFT of the magnetizations, with <span class="m">m<sub>p</sub> = M<sub>0,p</sub>·(available M<sub>z</sub>/M<sub>0</sub>)·e<sup>−TE<sub>line</sub>/T2</sup></span> for ideal pulses.',
+        'Color: hue = <span class="m">arg S(k)</span> (0 = red, π/2 = yellow-green, π = cyan, −π/2 = blue-violet), intensity = <span class="m">√(|S(k)|/ΣM<sub>0</sub>)</span> (or linear), the same encoding as the legend ball. The marker is k(t); the dashed jump is the 180°\'s k → −k.'
+      ]],
+      ['Real image (inverse Fourier)', [
+        '<span class="m">ρ(r) = (1/N²) Σ<sub>k</sub> S(k) e<sup>+2πi k·r/N</sup></span>. Grouping each conjugate pair {k, −k}: <span class="m">Z<sub>k</sub> = S(k) + S(−k)<sup>*</sup></span>, <span class="m">A<sub>k</sub> = |Z<sub>k</sub>|/N²</span>, <span class="m">φ<sub>k</sub> = arg Z<sub>k</sub></span>, and the pair\'s real contribution is <span class="m">A<sub>k</sub> cos(2π k·r/N + φ<sub>k</sub>)</span>; the DC term is <span class="m">|S(0)|/N² · cos(arg S(0))</span>. The (N²+1)/2 modes enter in increasing |k|; the sum is real by construction and the image shows its magnitude, as the scanner does (tissues with M<sub>z</sub> &lt; 0 at the 90° appear bright). White = maximum of the full reconstruction.'
+      ]],
+      ['Mode / Residual', [
+        'Mode: the normalized pattern <span class="m">cos(2π k·r/N + φ<sub>k</sub>)</span> (mid-gray = 0); the small "×" square is |Z<sub>k</sub>| in the k-space encoding (always phase 0).',
+        'Residual: <span class="m">|ρ|/c − ρ<sub>ideal</sub></span>, with <span class="m">ρ<sub>ideal,p</sub> = |M<sub>⊥,p</sub>(t<sub>k=0</sub>)|</span> (each pixel\'s signal at the instant of the central sample: the contrast the sequence intends) and <span class="m">c = Σ<sub>p</sub> |ρ<sub>p</sub>|ρ<sub>ideal,p</sub> / Σ<sub>p</sub> ρ<sub>ideal,p</sub><sup>2</sup></span> (least squares), shown on the image\'s gray scale, mid-gray = 0, times the gain. What remains is the effect of the k-space filter: unequal weights across lines and truncation.',
+        'When the k<sub>y</sub> lines have different TEs (fast spin echo), <span class="m">S<sub>meas</sub>(k) = W(k<sub>y</sub>) S(k)</span> with <span class="m">W = e<sup>−TE(k<sub>y</sub>)/T2</sup></span>, hence <span class="m">ρ<sub>rec</sub> = w ∗ ρ</span>, <span class="m">w = F<sup>−1</sup>[W]</span>: the residual is the effect of that convolution.'
+      ]]
+    ],
+    notes: 'Model: what is physics and what is didactic simplification',
+    noteList: [
+      'Model (common to all sequences): rotating frame at ω₀, Δφ = 2π(Δkₓ·x + Δk_y·y)/N with x, y ∈ {−(N−1)/2,…,(N−1)/2} (N odd, selector in the panel), m → m·e^{−iΔφ}: the samples are the forward DFT of the pixel magnetizations. Hard pulses, with the angle growing linearly across the width only so the rotation can be watched; relaxation suspended during pulses. Relaxation: M⊥ ∝ e^{−t/T2}, M_z → M₀ + (M_z − M₀)e^{−t/T1}; sliders at ∞ switch them off. Signal S = Σ(Mₓ + iM_y) over the N² pixels (unnormalized). Up to N = 9 each pixel shows its Bloch sphere; above that only the cell color and, up to N = 15, the M⊥ arrow. Slice selection is taken as already done.',
+      'Phantoms are tissue maps: each pixel has a label (gray matter, white matter, CSF, fat, cortical bone, air, lesion) that fixes its proton density, T1 and T2 (dictionary tissues.json, approximate 3 T values), plus an optional density factor (the ramp). The "filled/empty" phantoms are gray matter on air: the simplest case, insensitive to TE and TR, where the signal intensity can be read directly as the sum of the transverse arrows of the filled pixels. The "GM on WM" phantoms have a background with signal, and then figure/background contrast depends on the sequence (TE, TR, TI). The "global T1/T2" box replaces the tissue values by the sliders, for experiments such as T2 = ∞.',
+      'k-space: each cell is one sampling (dwell) interval; the sample sits at its center and the readout sweep covers whole cells (−N/2 to +N/2). Color is the phase of S and intensity |S|, with the same encoding as the legend ball. At ideal refocusing pulses k → −k.',
+      'Inverse Fourier: image(r) = (1/N²) Σ_k S(k) e^{+2πi k·r/N}; each conjugate pair {k, −k} gives one real wave A cos(2π k·r/N + φ); (N²+1)/2 modes (DC + (N²−1)/2 pairs) in increasing |k|. Residual = image/c − ideal image (each pixel\'s |M⊥| at the central echo), with c by least squares: it measures the k-space filter, not the contrast.',
+      'Sequences are JSON files (format didactic-mri-sequence/1): parameters, constants, derived variables and a list of events per repetition (rf, grad, adc, spoil, repeat, band, arrow, mark), with times and areas as expressions. "Copy sequence JSON" exports the current sequence; "load sequence" reads one from disk. Expressions are evaluated as JavaScript: load only files from a known source.',
+      'Keyboard: space = play/pause, ← → = previous/next event, Home = start.'
+    ]
+  }
+};
+const E = SeqEngine, D = SeqDraw;
+const st = { defs: {}, order: [], seqId: 'se', def: null, P: {}, S: null, N: 5, phantom: 'squareAir', lang: 'pt', cellMode: 'density', linear: false, compress: true, scrubbing: false,
+  speed: 10, u: 0, playing: false, sim: null, L: null, raf: 0, last: 0, cursorEl: null, revealEl: null, hlEl: null, events: [] };
+const EPS = 22 * Math.PI / 180;          // elevation of the view: the equator becomes an ellipse of aspect sin(EPS)
+
+function L() { return I18N[st.lang]; }
+function PH() { if (!st.ph || st.ph.name !== st.phantom || st.ph.N !== st.N) st.ph = Object.assign({ name: st.phantom, N: st.N }, E.phantom(st.phantom, st.N, TISSUES)); return st.ph; }
+function M0() { return PH().M0; }
+const NSPHERE = 9, NARROW = 15;   // Bloch spheres drawn up to N = NSPHERE; transverse arrows only up to NARROW
+function nModes() { return (st.N * st.N + 1) / 2; }
+function mk(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/([_^])\{([^}]*)\}/g, (m, c, t) => c === '_' ? `<sub>${t}</sub>` : `<sup>${t}</sup>`).replace(/([_^])([A-Za-z0-9α-ωΑ-Ω−+\-]{1})/g, (m, c, t) => c === '_' ? `<sub>${t}</sub>` : `<sup>${t}</sup>`); }
+function loc(v) { return (v && typeof v === 'object') ? (v[st.lang] || v.pt || v.en || '') : (v == null ? '' : String(v)); }
+function fmtMs(v) { return Number.isFinite(v) ? v + ' ms' : '∞'; }
+
+// replace native select popups by in-page lists (see the .dd rules); call after options or values change
+function enhanceSelects() {
+  for (const sel of document.querySelectorAll('select')) {
+    let dd = sel.parentElement;
+    if (!dd || !dd.classList.contains('dd')) {
+      dd = document.createElement('span'); dd.className = 'dd' + (sel.classList.contains('h1sel') ? ' h1' : '');
+      sel.replaceWith(dd); dd.appendChild(sel); sel.tabIndex = -1;
+      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'ddbtn'; btn.setAttribute('aria-haspopup', 'listbox');
+      const list = document.createElement('div'); list.className = 'ddlist'; list.setAttribute('role', 'listbox');
+      dd.append(btn, list);
+      const close = () => { list.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); };
+      const open = () => {
+        list.innerHTML = '';
+        for (const o of sel.options) {
+          const it = document.createElement('div'); it.setAttribute('role', 'option'); it.textContent = o.textContent; it.dataset.v = o.value;
+          if (o.value === sel.value) { it.classList.add('cur'); it.setAttribute('aria-selected', 'true'); }
+          it.addEventListener('click', ev => { ev.stopPropagation(); close(); if (sel.value !== o.value) { sel.value = o.value; sel.dispatchEvent(new Event('change', { bubbles: true })); } });
+          list.appendChild(it);
+        }
+        for (const other of document.querySelectorAll('.ddlist.open')) other.classList.remove('open');
+        list.classList.add('open'); btn.setAttribute('aria-expanded', 'true');
+      };
+      btn.addEventListener('click', ev => { ev.stopPropagation(); list.classList.contains('open') ? close() : open(); });
+      btn.addEventListener('keydown', ev => {
+        const i = sel.selectedIndex, n = sel.options.length;
+        if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); const j = Math.min(n - 1, Math.max(0, i + (ev.key === 'ArrowDown' ? 1 : -1))); if (j !== i) { sel.selectedIndex = j; sel.dispatchEvent(new Event('change', { bubbles: true })); } if (list.classList.contains('open')) open(); }
+        else if (ev.key === 'Escape') close();
+      });
+      document.addEventListener('click', close);
+      sel.addEventListener('change', () => { btn.textContent = sel.options[sel.selectedIndex]?.textContent || ''; });
+    }
+    dd.querySelector('.ddbtn').textContent = sel.options[sel.selectedIndex]?.textContent || '';
+  }
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') for (const l of document.querySelectorAll('.ddlist.open')) l.classList.remove('open'); });
+
+function applyLang() {
+  const d = L();
+  $('sub').innerHTML = mk(loc(st.def.subtitle)); $('lead').innerHTML = mk(loc(st.def.lead));
+  for (const o of $('seqSel').options) o.textContent = loc(st.defs[o.value].name);
+  $('play').textContent = st.playing ? d.pause : d.play; $('reset').textContent = d.reset; $('prev').textContent = d.prev; $('next').textContent = d.next;
+  $('lSpeed').textContent = d.speed; $('lPhantom').textContent = d.phantom;
+  for (const k of ['squareAir', 'letterFAir', 'uniform', 'square', 'letterF', 'ramp', 'brain']) $('phantom').querySelector(`option[value=${k}]`).textContent = d[k];
+  $('lModeDensity').textContent = d.modeDensity; $('lModePhase').textContent = d.modePhase; $('lModeTissue').textContent = d.modeTissue; $('lRelaxOverride').textContent = d.relaxOverride; $('lLinear').textContent = d.linear; $('lCompress').textContent = d.compress; $('lang').textContent = d.lang; $('copysvg').textContent = d.copy; $('loadseq').textContent = d.loadseq; $('copyseq').textContent = d.copyseq;
+  buildParamControls();
+  $('tSpins').textContent = d.tSpins(st.N); $('sSpins').textContent = st.cellMode === 'phase' ? d.sSpinsPhase : (st.cellMode === 'tissue' ? d.sSpinsTissue : d.sSpinsDensity);
+  const used = new Set(PH().label);
+  $('tissueLegend').innerHTML = `<span>${d.tissueHdr}</span>` + Object.entries(TISSUES).filter(([k]) => used.has(k)).map(([k, t]) => `<span><i style="background:${t.color}"></i>${loc(t.name)} ${t.pd.toFixed(2)} · ${t.T1} · ${t.T2}</span>`).join(''); $('tK').textContent = d.tK;
+  $('fplay').textContent = F.playing ? d.fpause : d.fplay; $('freset').textContent = d.freset; $('fprev').textContent = d.fprev; $('fnext').textContent = d.fnext;
+  $('lFspeed').textContent = d.fspeed; $('vFspeed').textContent = (F.speed = +$('fspeed').value / 10).toFixed(1) + ' ' + d.fspeedUnit;
+  $('tImg').textContent = d.tImg; $('lGain').textContent = d.lGain;
+  $('tNotes').textContent = d.notes;
+  const seqNotes = (st.def.notes && (st.def.notes[st.lang] || st.def.notes.pt)) || [];
+  $('notes').innerHTML = seqNotes.concat(d.noteList).map(s => `<li>${mk(s)}</li>`).join('');
+  $('tEq').textContent = d.tEq; $('eqs').innerHTML = d.eqs.map(([h, ps]) => `<div><h3>${h}</h3>${ps.map(x => `<p>${x}</p>`).join('')}</div>`).join('');
+  document.documentElement.lang = st.lang === 'pt' ? 'pt-BR' : 'en';
+  enhanceSelects();
+}
+
+// sequence parameter controls, built from the sequence file
+function buildParamControls() {
+  const box = $('seqParams'); box.innerHTML = '';
+  for (const p of st.def.params || []) {
+    const lab = document.createElement('label'), id = 'p_' + p.id;
+    if (p.type === 'checkbox') {
+      lab.innerHTML = `<input type="checkbox" id="${id}"> <span>${loc(p.label)}</span>`;
+      lab.querySelector('input').checked = !!st.P[p.id];
+      lab.querySelector('input').addEventListener('change', e => { st.P[p.id] = e.target.checked ? 1 : 0; pause(); rebuild(); });
+    } else if (p.type === 'select') {
+      lab.innerHTML = `<span>${loc(p.label)}</span> <select id="${id}">${p.options.map(o => `<option value="${o.value}">${loc(o.label)}</option>`).join('')}</select>`;
+      lab.querySelector('select').value = st.P[p.id];
+      lab.querySelector('select').addEventListener('change', e => { st.P[p.id] = e.target.value; pause(); rebuild(); });
+    } else {
+      lab.innerHTML = `<span${p.title ? ` title="${loc(p.title)}"` : ''}>${loc(p.label || p.id)}</span> <input type="range" id="${id}" min="${p.min}" max="${p.max}" step="${p.step || 1}"><span class="v" id="v_${p.id}"></span>`;
+      const inp = lab.querySelector('input'); inp.value = st.P[p.id];
+      inp.addEventListener('input', e => { st.P[p.id] = +e.target.value; $('v_' + p.id).textContent = st.P[p.id] + (p.unit ? ' ' + p.unit : ''); pause(); rebuild(); });
+      lab.querySelector('.v').textContent = st.P[p.id] + (p.unit ? ' ' + p.unit : '');
+    }
+    box.appendChild(lab);
+  }
+}
+function readSliders() {
+  const t1 = +$('T1').value, t2 = +$('T2').value, ph = PH(), over = $('relaxOverride').checked;
+  st.relax = over ? { T1: t1 >= +$('T1').max ? Infinity : t1, T2: t2 >= +$('T2').max ? Infinity : t2, dt: 0.1, nGap: 80 } : { T1: ph.T1, T2: ph.T2, dt: 0.1, nGap: 80 };
+  $('T1').disabled = !over; $('T2').disabled = !over;
+  $('vT1').textContent = over ? fmtMs(st.relax.T1) : '—'; $('vT2').textContent = over ? fmtMs(st.relax.T2) : '—';
+  $('vSpeed').textContent = (st.speed = +$('speed').value) + '×';
+}
+function selectSequence(id) {
+  st.seqId = id; st.def = st.defs[id]; st.P = E.paramDefaults(st.def);
+  if (st.def.phantom && $('phantom').querySelector(`option[value=${st.def.phantom}]`)) { st.phantom = st.def.phantom; $('phantom').value = st.phantom; }
+  if (st.def.relax) { $('T1').value = Number.isFinite(st.def.relax.T1) ? st.def.relax.T1 : $('T1').max; $('T2').value = Number.isFinite(st.def.relax.T2) ? st.def.relax.T2 : $('T2').max; }
+  $('seqSel').value = id; st.u = 0; pause(); fPause(); F.step = -1; F.phase = 0; F.data = null;
+  applyLang(); rebuild();
+}
+
+function drawOpts(extra) { const d = L(); return Object.assign({ lang: st.lang, compress: st.compress, labels: { peDesc: d.peDesc, feDesc: d.feDesc, envDesc: d.envDesc } }, extra); }
+function rebuild() {
+  readSliders();
+  let S;
+  try { S = E.compile(st.def, st.P, st.lang, st.N); $('err').textContent = ''; }
+  catch (e) { $('err').textContent = L().errSeq + e.message; if (!st.S) return; S = st.S; }
+  st.S = S;
+  st.sim = E.simulate(S, M0(), st.relax);
+  const r = D.build(S, st.sim, drawOpts({ showCursor: true }));
+  st.bandX = r.bandX; st.bandW = r.bandW;
+  st.L = r.L;
+  const wrap = $('figwrap'); wrap.innerHTML = r.svg;
+  const svg = wrap.querySelector('svg');
+  st.cursorEl = svg.querySelector('#cursor'); st.revealEl = svg.querySelector('#revealRect'); st.hlEl = svg.querySelector('#trHighlight');
+  // event list for stepping
+  st.events = E.eventTimes(S).map(t => st.L.uOf(t));
+  svg.style.width = st.compress ? '' : r.L.width + 'px';
+  attachScrub(svg);
+  st.u = Math.min(st.u, st.L.uEnd);
+  render();
+}
+
+function attachScrub(svg) {
+  let down = false;
+  const toU = e => { const r = svg.getBoundingClientRect(); const xs = (e.clientX - r.left) * st.L.width / r.width; return Math.max(0, Math.min(st.L.uEnd, (xs - st.L.gutter) / st.L.s)); };
+  svg.addEventListener('pointerdown', e => { down = true; st.scrubbing = true; svg.setPointerCapture(e.pointerId); pause(); st.u = toU(e); render(); });
+  svg.addEventListener('pointermove', e => { if (down) { st.u = toU(e); render(); } });
+  svg.addEventListener('pointerup', () => { down = false; st.scrubbing = false; }); svg.addEventListener('pointercancel', () => { down = false; st.scrubbing = false; });
+}
+
+/* ---------- playback ---------- */
+function play() { fPause(); if (st.u >= st.L.uEnd - 1e-6) st.u = 0; st.playing = true; $('play').textContent = L().pause; st.last = performance.now(); cancelAnimationFrame(st.raf); st.raf = requestAnimationFrame(tick); }
+function pause() { st.playing = false; $('play').textContent = L().play; cancelAnimationFrame(st.raf); }
+function tick(now) {
+  if (!st.playing) return;
+  const dtReal = Math.min(0.1, (now - st.last) / 1000); st.last = now;
+  st.u += st.speed * dtReal;
+  if (st.u >= st.L.uEnd) { st.u = st.L.uEnd; render(); pause(); return; }
+  render(); st.raf = requestAnimationFrame(tick);
+}
+function stepEvent(dir) {
+  pause(); fPause();
+  const eps = 1e-4; let target = null;
+  if (dir > 0) { for (const u of st.events) if (u > st.u + eps) { target = u; break; } if (target == null) target = st.L.uEnd; }
+  else { for (let i = st.events.length - 1; i >= 0; i--) if (st.events[i] < st.u - eps) { target = st.events[i]; break; } if (target == null) target = 0; }
+  st.u = target; render();
+}
+
+/* ---------- colors ---------- */
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function parseRGB(c) {
+  const d = document.createElement('canvas').getContext('2d'); d.fillStyle = c; const s = d.fillStyle;   // normalizes to #rrggbb
+  return [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)];
+}
+function hsl2rgb(h, s, l) {
+  h = ((h % 360) + 360) % 360; s /= 100; l /= 100;
+  const c = (1 - Math.abs(2 * l - 1)) * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = l - c / 2;
+  let r, g, b;
+  if (h < 60) [r, g, b] = [c, x, 0]; else if (h < 120) [r, g, b] = [x, c, 0]; else if (h < 180) [r, g, b] = [0, c, x];
+  else if (h < 240) [r, g, b] = [0, x, c]; else if (h < 300) [r, g, b] = [x, 0, c]; else [r, g, b] = [c, 0, x];
+  return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+}
+let dark = false, bgRGB = [255, 255, 255];
+function refreshTheme() { bgRGB = parseRGB(cssVar('--panel')); dark = (bgRGB[0] + bgRGB[1] + bgRGB[2]) / 3 < 128; }
+function phaseRGB(phi) { let h = (phi / (2 * Math.PI)) % 1; if (h < 0) h += 1; return hsl2rgb(h * 360, 85, dark ? 56 : 46); }
+function mixColor(phi, a) { const c = phaseRGB(phi); return `rgb(${bgRGB.map((b, i) => Math.round(b + a * (c[i] - b))).join(',')})`; }
+function intensity(x) { return st.linear ? x : Math.sqrt(x); }
+
+/* ---------- drawing ---------- */
+function setupCanvas(cv, cssW, cssH) {
+  const dpr = window.devicePixelRatio || 1;
+  if (cv.width !== Math.round(cssW * dpr) || cv.height !== Math.round(cssH * dpr)) { cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr); }
+  cv.style.height = cssH + 'px';
+  const ctx = cv.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, cssW, cssH); return ctx;
+}
+function arrow(ctx, x0, y0, x1, y1, color, w, halo) {
+  const dx = x1 - x0, dy = y1 - y0, len = Math.hypot(dx, dy);
+  if (len < 1.2) return;
+  const hl = Math.min(7, len * 0.6), hw = hl * 0.5, ux = dx / len, uy = dy / len;
+  ctx.setLineDash([]); ctx.lineJoin = 'round';
+  const pass = (col, lw, headStroke) => {
+    ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = lw;
+    ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1 - ux * hl * 0.6, y1 - uy * hl * 0.6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x1 - ux * hl - uy * hw, y1 - uy * hl + ux * hw); ctx.lineTo(x1 - ux * hl + uy * hw, y1 - uy * hl - ux * hw); ctx.closePath(); ctx.fill();
+    if (headStroke) { ctx.lineWidth = headStroke; ctx.stroke(); }
+  };
+  if (halo) pass(halo, w + 1.8, 1.6);              // thin contrast halo on grey cells
+  pass(color, w, 0);
+}
+function luma(hex) { const n = parseInt(hex.slice(1), 16); return 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255); }
+function drawSphere(ctx, cx, cy, R, mx, my, mz, m0, m0max, tissueOf) {
+  const se = Math.sin(EPS), ce = Math.cos(EPS);
+  const proj = (x, y, z) => [cx + R * x, cy - R * (y * se + z * ce)];
+  const sphere = cssVar('--sphere'), eq = cssVar('--equator');
+  const c = R / 0.4;
+  let halo = null;
+  if (st.cellMode === 'density') {                 // grey scale: proton density, white = M0 = 1
+    const g = Math.round(255 * (0.1 + 0.9 * Math.min(1, m0)));
+    ctx.fillStyle = `rgb(${g},${g},${g})`; ctx.beginPath(); ctx.roundRect(cx - c / 2 + 1, cy - c / 2 + 1, c - 2, c - 2, 5); ctx.fill();
+    halo = g < 140 ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.3)';
+  } else if (st.cellMode === 'tissue') {           // tissue colour
+    const col = TISSUES[tissueOf].color; ctx.fillStyle = col; ctx.beginPath(); ctx.roundRect(cx - c / 2 + 1, cy - c / 2 + 1, c - 2, c - 2, 5); ctx.fill();
+    halo = luma(col) < 140 ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.3)';
+  } else {                                          // colour: transverse phase, intensity |M_perp|
+    const mt = Math.hypot(mx, my), a = 0.5 * intensity(Math.min(1, mt / m0max));
+    if (a > 0.01) { ctx.fillStyle = mixColor(Math.atan2(my, mx), a); ctx.beginPath(); ctx.roundRect(cx - c / 2 + 1, cy - c / 2 + 1, c - 2, c - 2, 5); ctx.fill(); }
+  }
+  ctx.lineWidth = 1.3; ctx.strokeStyle = sphere; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.stroke();
+  // z axis (faint), equator: back half dashed, front half solid
+  ctx.strokeStyle = sphere; ctx.setLineDash([2, 3]);
+  ctx.beginPath(); const [zx0, zy0] = proj(0, 0, -1), [zx1, zy1] = proj(0, 0, 1); ctx.moveTo(zx0, zy0); ctx.lineTo(zx1, zy1); ctx.stroke();
+  ctx.strokeStyle = eq; ctx.lineWidth = 1.3;
+  ctx.beginPath(); ctx.ellipse(cx, cy, R, R * se, 0, Math.PI, 2 * Math.PI); ctx.stroke();
+  ctx.setLineDash([]); ctx.beginPath(); ctx.ellipse(cx, cy, R, R * se, 0, 0, Math.PI); ctx.stroke();
+  // vectors
+  const [tx, ty] = proj(mx, my, mz), [px, py] = proj(mx, my, 0), [lx, ly] = proj(0, 0, mz);
+  ctx.strokeStyle = halo ? (halo.startsWith('rgba(255') ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.5)') : cssVar('--muted'); ctx.lineWidth = 0.9; ctx.setLineDash([2, 2]);
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(px, py); ctx.moveTo(tx, ty); ctx.lineTo(lx, ly); ctx.stroke();
+  ctx.setLineDash([]);
+  arrow(ctx, cx, cy, px, py, cssVar('--vecC'), 1.6, halo);
+  arrow(ctx, cx, cy, lx, ly, cssVar('--vecC'), 1.6, halo);
+  arrow(ctx, cx, cy, tx, ty, cssVar('--vecM'), 2.2, halo);
+}
+function axisLabels(ctx, N, pad, cell, W, H, xName, yName) {
+  const Hh = (N - 1) / 2, step = N <= 9 ? 1 : (N <= 15 ? 2 : 4);
+  ctx.font = `${N <= 9 ? 12 : 10}px ${cssVar('--mono')}`; ctx.fillStyle = cssVar('--muted'); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (let v = -Hh; v <= Hh; v += step) { ctx.fillText(String(v), pad + (v + Hh + 0.5) * cell, H - pad / 2); ctx.fillText(String(v), pad / 2, (Hh - v + 0.5) * cell); }
+  ctx.font = `italic 12px ${cssVar('--font')}`; ctx.fillText(xName || 'x', W - 8, H - pad / 2); ctx.fillText(yName || 'y', pad / 2, 8);
+}
+// large N: no sphere; cell fill (density gray or phase tint) and, up to NARROW, the transverse magnetization as a 2D arrow
+function drawCellFlat(ctx, cx, cy, c, mx, my, m0, m0max, withArrow, tissueOf) {
+  let halo = null;
+  if (st.cellMode === 'density') { const g = Math.round(255 * (0.1 + 0.9 * Math.min(1, m0))); ctx.fillStyle = `rgb(${g},${g},${g})`; halo = g < 140 ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.3)'; }
+  else if (st.cellMode === 'tissue') { const col = TISSUES[tissueOf].color; ctx.fillStyle = col; halo = luma(col) < 140 ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.3)'; }
+  else { const mt = Math.hypot(mx, my), a = intensity(Math.min(1, mt / m0max)); ctx.fillStyle = a > 0.01 ? mixColor(Math.atan2(my, mx), a) : cssVar('--panel2'); }
+  ctx.beginPath(); ctx.roundRect(cx - c / 2 + 1, cy - c / 2 + 1, c - 2, c - 2, 3); ctx.fill();
+  if (withArrow) { const R = 0.42 * c; arrow(ctx, cx, cy, cx + R * mx / m0max, cy - R * my / m0max, cssVar('--vecM'), 1.4, halo); }
+}
+function renderSpins(i) {
+  const N = st.N, Hh = (N - 1) / 2, NP = N * N, cv = $('spins'), W = cv.clientWidth || 400, pad = 22, cell = (W - pad) / N, H = Math.round(cell * N + pad);
+  const ctx = setupCanvas(cv, W, H), sim = st.sim, m0 = M0(), m0max = Math.max(...m0);
+  axisLabels(ctx, N, pad, cell, W, H);
+  ctx.font = `italic 12px ${cssVar('--font')}`; ctx.fillText('x', W - 8, H - pad / 2); ctx.fillText('y', pad / 2, 8);
+  for (let p = 0; p < NP; p++) {
+    const j = p % N, l = Math.floor(p / N), cx = pad + (j + 0.5) * cell, cy = (l + 0.5) * cell, mx = sim.Mx[i * NP + p], my = sim.My[i * NP + p], mz = sim.Mz[i * NP + p];
+    if (N <= NSPHERE) drawSphere(ctx, cx, cy, 0.4 * cell, mx, my, mz, m0[p], m0max, PH().label[p]);
+    else drawCellFlat(ctx, cx, cy, cell, mx, my, m0[p], m0max, N <= NARROW, PH().label[p]);
+  }
+}
+function renderK(i) {
+  const N = st.N, Hh = (N - 1) / 2, cv = $('kspace'), W = cv.clientWidth || 400, pad = 22, G = W - pad, c = G / N, ox = pad, oy = 0, H = Math.round(G + pad);
+  const ctx = setupCanvas(cv, W, H), sim = st.sim, t = sim.times[i];
+  const px = kx => ox + (kx + N / 2) * c, py = ky => oy + (N / 2 - ky) * c;
+  ctx.fillStyle = cssVar('--panel2'); ctx.fillRect(ox, oy, G, G);
+  for (const s of sim.samples) if (s.idx <= i) {
+    const mag = Math.hypot(s.re, s.im) / sim.Smax;
+    ctx.fillStyle = mixColor(Math.atan2(s.im, s.re), intensity(Math.min(1, mag)));
+    ctx.fillRect(px(s.kx - 0.5), py(s.ky + 0.5), c, c);
+  }
+  ctx.strokeStyle = cssVar('--line'); ctx.lineWidth = 1; ctx.setLineDash([]);
+  for (let q = 0; q <= N; q++) { ctx.beginPath(); ctx.moveTo(ox + q * c, oy); ctx.lineTo(ox + q * c, oy + G); ctx.moveTo(ox, oy + q * c); ctx.lineTo(ox + G, oy + q * c); ctx.stroke(); }
+  axisLabels(ctx, N, pad, c, W, H, 'kx', 'ky');
+  // trajectory of the current TR, jump dashed
+  const bi = bandAt(t), i0 = bi < 0 ? 0 : E.indexAt(sim, sim.S.bands[bi].t);
+  ctx.lineWidth = 1.4; ctx.strokeStyle = cssVar('--cursor');
+  let lastX = px(sim.kxM[i0]), lastY = py(sim.kyM[i0]);
+  for (let q = i0 + 1; q <= i; q++) {
+    const X = px(sim.kxM[q]), Y = py(sim.kyM[q]);
+    if (Math.abs(sim.kxM[q] - sim.kxM[q - 1]) + Math.abs(sim.kyM[q] - sim.kyM[q - 1]) > 0.5) ctx.setLineDash([4, 4]); else ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(X, Y); ctx.stroke(); lastX = X; lastY = Y;
+  }
+  ctx.setLineDash([]);
+  if (F.step >= 0 && F.step < nModes() && F.data) {           // conjugate pair being reconstructed: thick alien-green border
+    ctx.strokeStyle = '#39ff14'; ctx.lineWidth = 4;
+    for (const [kx, ky] of F.data.modes[F.step].cells) ctx.strokeRect(px(kx - 0.5) + 2, py(ky + 0.5) + 2, c - 4, c - 4);
+  }
+  const mx = px(sim.kxM[i]), my = py(sim.kyM[i]);
+  ctx.beginPath(); ctx.arc(mx, my, 5.5, 0, 2 * Math.PI); ctx.fillStyle = cssVar('--cursor'); ctx.fill(); ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.5; ctx.stroke();
+  // last acquired sample text
+  let last = null; for (const s of sim.samples) if (s.idx <= i) last = s;
+  $('lastSample').textContent = last ? L().last(last.kx, last.ky, (Math.hypot(last.re, last.im) / sim.Smax).toFixed(3), Math.round(Math.atan2(last.im, last.re) * 180 / Math.PI)) : '';
+}
+function renderWheel() {
+  const cv = $('wheel'), Wc = 160, ctx = setupCanvas(cv, Wc, Wc), cx = 80, cy = 80, R = 52, d = L();
+  // solid ball: hue = phase (counter-clockwise from +x), radial coordinate = |S| with the same intensity law as the cells
+  for (let r = R; r >= 1; r--) for (let q = 0; q < 72; q++) {
+    const a0 = q * Math.PI / 36, a1 = a0 + Math.PI / 36 + 0.03;
+    ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, r, -a1, -a0, false); ctx.closePath(); ctx.fillStyle = mixColor((a0 + a1) / 2, intensity(r / R)); ctx.fill();
+  }
+  ctx.strokeStyle = cssVar('--line'); ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.stroke();
+  // phase labels outside
+  ctx.fillStyle = cssVar('--fg'); ctx.font = `10px ${cssVar('--mono')}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('0', cx + R + 10, cy); ctx.fillText('π', cx - R - 9, cy); ctx.fillText('π/2', cx, cy - R - 9); ctx.fillText('−π/2', cx, cy + R + 10);
+  // |S| arrow from the center outward (white, dark halo)
+  const ang = -0.6, x1 = cx + 0.86 * R * Math.cos(ang), y1 = cy - 0.86 * R * Math.sin(ang);
+  arrow(ctx, cx, cy, x1, y1, '#fff', 2, 'rgba(0,0,0,0.55)');
+  ctx.font = `bold 11px ${cssVar('--font')}`; ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineJoin = 'round';
+  const lx = cx + 0.55 * R * Math.cos(ang) - 11 * Math.sin(ang) + 2, ly = cy - 0.55 * R * Math.sin(ang) - 11 * Math.cos(ang) - 1;
+  ctx.strokeText(d.mag, lx, ly); ctx.fillStyle = '#fff'; ctx.fillText(d.mag, lx, ly);
+  // the word "phase" along the upper-right edge, outside the ball
+  const word = d.phase, rr = R + 12; ctx.font = `600 12px ${cssVar('--font')}`; ctx.fillStyle = cssVar('--fg');
+  const widths = [...word].map(ch => ctx.measureText(ch).width), total = widths.reduce((a, b) => a + b, 0), span = total / rr;
+  let a = Math.PI / 4 + span / 2;        // centered on 45°, reading clockwise
+  [...word].forEach((ch, k) => { const half = widths[k] / 2 / rr; a -= half; ctx.save(); ctx.translate(cx + rr * Math.cos(a), cy - rr * Math.sin(a)); ctx.rotate(Math.PI / 2 - a); ctx.fillText(ch, 0, 0); ctx.restore(); a -= half; });
+}
+function bandAt(t) { const B = st.S.bands; for (let i = B.length - 1; i >= 0; i--) if (t >= B[i].t - 1e-9) return i; return -1; }
+function segmentText(t) {
+  const d = L(), sg = E.segmentAt(st.S, t);
+  const descOf = e => e.desc || (e.type === 'rf' ? d.seg.rf(Math.round(e.flip), e.axis) : e.type === 'adc' ? d.seg.adc : d.seg.grad(e.axis));
+  if (sg.kind === 'rf') return descOf(sg.e);
+  if (sg.kind === 'adc') return [descOf(sg.e)].concat(sg.grads.filter(g => g.desc).map(descOf)).join(' · ');
+  if (sg.kind === 'grad') return sg.grads.map(descOf).join(' + ');
+  return d.seg[sg.kind];
+}
+/* ---------- inverse Fourier reconstruction ---------- */
+const F = { step: -1, phase: 0, playing: false, raf: 0, last: 0, acc: 0, speed: 1, data: null, sim: null, nAcq: -1, gain: 1 };
+function acquiredUpTo(i) { const out = []; for (const s of st.sim.samples) if (s.idx <= i) out.push(s); return out; }
+function fourierPrep(i) {
+  const acq = acquiredUpTo(i);
+  if (F.data && F.sim === st.sim && F.nAcq === acq.length) return F.data;
+  const N = st.N, Hh = (N - 1) / 2, N2 = N * N, S = new Map(); for (const s of acq) S.set(s.kx + ',' + s.ky, s);
+  const get = (kx, ky) => S.get(kx + ',' + ky) || { re: 0, im: 0 };
+  const reps = []; for (let kx = -Hh; kx <= Hh; kx++) for (let ky = -Hh; ky <= Hh; ky++) if (kx > 0 || (kx === 0 && ky > 0)) reps.push([kx, ky]);
+  reps.sort((a, b) => (a[0] * a[0] + a[1] * a[1]) - (b[0] * b[0] + b[1] * b[1]) || Math.atan2(a[1], a[0]) - Math.atan2(b[1], b[0]));
+  const modes = [{ kx: 0, ky: 0, cells: [[0, 0]], Z: { re: get(0, 0).re, im: get(0, 0).im } }];
+  for (const [kx, ky] of reps) { const a = get(kx, ky), b = get(-kx, -ky); modes.push({ kx, ky, cells: [[kx, ky], [-kx, -ky]], Z: { re: a.re + b.re, im: a.im - b.im } }); }
+  for (const m of modes) {          // real contribution of the pair: (1/N^2) Re[Z e^{i theta}] = (|Z|/N^2) cos(theta + arg Z)
+    m.amp = Math.hypot(m.Z.re, m.Z.im) / N2; m.phase = Math.atan2(m.Z.im, m.Z.re);
+    m.contrib = new Float64Array(N2); m.pattern = new Float64Array(N2);
+    for (let p = 0; p < N2; p++) { const q = E.pixelXY(p, N), c = Math.cos(2 * Math.PI * (m.kx * q.x + m.ky * q.y) / N + m.phase); m.pattern[p] = c; m.contrib[p] = m.amp * c; }
+  }
+  const full = new Float64Array(N2); for (const m of modes) for (let p = 0; p < N2; p++) full[p] += m.contrib[p];
+  const mag = full.map(Math.abs), vmax = Math.max(1e-9, ...mag);
+  // reference ("ideal image" of this sequence): each pixel's |M_perp| at the k = 0 sample, i.e. the contrast the sequence
+  // intends, without the k-space weighting (T2 decay across lines, truncation) that the reconstruction adds
+  const s00 = acq.find(s => s.kx === 0 && s.ky === 0), ref = new Float64Array(N2), sim = st.sim;
+  if (s00) for (let p = 0; p < N2; p++) ref[p] = Math.hypot(sim.Mx[s00.idx * N2 + p], sim.My[s00.idx * N2 + p]);
+  const refmax = Math.max(1e-9, ...ref);
+  let num = 0, den = 0; for (let p = 0; p < N2; p++) { num += mag[p] * ref[p]; den += ref[p] * ref[p]; }
+  const c = den > 0 && num !== 0 ? num / den : 1;
+  const resid = new Float64Array(N2); let rmax = 0;
+  for (let p = 0; p < N2; p++) { resid[p] = (mag[p] / c - ref[p]) / refmax; rmax = Math.max(rmax, Math.abs(resid[p])); }
+  F.data = { modes, full, vmax, c, resid, rmax, refmax, nAcq: acq.length, S }; F.sim = st.sim; F.nAcq = acq.length;
+  return F.data;
+}
+function fResetIfStale(i) { const n = acquiredUpTo(i).length; if (F.sim !== st.sim || F.nAcq !== n) { fPause(); F.step = -1; F.phase = 0; F.data = null; } }
+function grayGrid(cv, values, map) {    // same geometry as the pixel array: pad 22 left/bottom, 5 cells
+  const N = st.N, W = cv.clientWidth || 400, pad = 22, cell = (W - pad) / N, H = Math.round(cell * N + pad), ctx = setupCanvas(cv, W, H);
+  axisLabels(ctx, N, pad, cell, W, H);
+  for (let p = 0; p < N * N; p++) {
+    const j = p % N, l = Math.floor(p / N), g = Math.round(255 * Math.max(0, Math.min(1, map(values[p]))));
+    ctx.fillStyle = `rgb(${g},${g},${g})`; ctx.beginPath(); ctx.roundRect(pad + j * cell + 1, l * cell + 1, cell - 2, cell - 2, N <= 9 ? 5 : 2); ctx.fill();
+  }
+  return { ctx, pad, cell, H };
+}
+// "× [k-space cell]" swatch inside the bottom-left cell of the mode pane: the amplitude that multiplies the pattern,
+// drawn with the same colour the cell has in the k-space pane (phase hue, |S| intensity) and the same alien-green border.
+function drawAmpSwatch(geo, m) {
+  // the pair sum with phases aligned, Z = S(k) + S(-k)*, is what multiplies the displayed cos(theta + phi) pattern:
+  // |Z| is real and non-negative, so the swatch is always phase 0 (red); its intensity encodes |Z| on the k-space scale.
+  const { ctx, pad, cell, H } = geo, left = pad, bottom = H - pad, side = cell / 3;
+  const x0 = left + 0.36 * cell, y0 = bottom - 0.1 * cell - side;
+  const Zmag = Math.hypot(m.Z.re, m.Z.im);
+  ctx.fillStyle = Zmag > 0 ? mixColor(0, intensity(Math.min(1, Zmag / st.sim.Smax))) : cssVar('--panel2');
+  ctx.fillRect(x0, y0, side, side);
+  ctx.strokeStyle = '#39ff14'; ctx.lineWidth = 3; ctx.strokeRect(x0, y0, side, side);
+  ctx.fillStyle = '#39ff14'; ctx.font = `bold ${Math.round(side * 0.8)}px ${cssVar('--font')}`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('×', left + 0.2 * cell, y0 + side / 2 + 1);
+}
+function renderFourier(i) {
+  const d = fourierPrep(i), L_ = L(), s = F.step;
+  const NM = nModes(), N2 = st.N * st.N, nAdded = s < 0 ? 0 : (s >= NM ? NM : s + F.phase);
+  const img = new Float64Array(N2);
+  for (let j = 0; j < nAdded; j++) { const m = d.modes[j]; for (let p = 0; p < N2; p++) img[p] += m.contrib[p]; }
+  grayGrid($('img'), img, v => 0.1 + 0.9 * (Math.abs(v) / d.vmax));
+  $('sImg').textContent = nAdded === 0 ? L_.sImgIdle : L_.sImg(nAdded, d.nAcq, NM, N2);
+  if (s >= 0 && s < NM) {
+    const m = d.modes[s];
+    const geo = grayGrid($('mode'), m.pattern, v => 0.5 + 0.5 * v);
+    drawAmpSwatch(geo, m);
+    $('tMode').textContent = L_.tMode; $('gainRow').hidden = true;
+    const zRel = (Math.hypot(m.Z.re, m.Z.im) / st.sim.Smax).toFixed(3);
+    $('sMode').textContent = s === 0 ? L_.sModeDC(zRel) : L_.sMode(m.kx, m.ky, zRel, Math.round(m.phase * 180 / Math.PI));
+    $('fstatus').textContent = L_.fRun(s + 1, m.kx, m.ky, NM);
+  } else if (s >= NM) {
+    // same slope as the image (0.9 gray per vmax, residual converted to image units by c), zero at mid-gray, times the gain
+    grayGrid($('mode'), d.resid, v => 0.5 + 0.9 * F.gain * v * d.refmax * d.c / d.vmax);
+    $('tMode').textContent = L_.tResid; $('gainRow').hidden = false;
+    $('sMode').textContent = d.rmax > 1e-6 ? L_.sResid(d.rmax.toFixed(4), F.gain) : L_.sResid0;
+    $('fstatus').textContent = L_.fDone(NM);
+  } else {
+    grayGrid($('mode'), new Float64Array(N2), () => 0.5);
+    $('tMode').textContent = L_.tMode; $('gainRow').hidden = true; $('sMode').textContent = L_.sModeIdle; $('fstatus').textContent = L_.fIdle;
+  }
+}
+function curIndex() { return E.indexAt(st.sim, st.L.tOf(st.u)); }
+function fRenderAll() { const i = curIndex(); renderK(i); renderFourier(i); }
+function fAdvanceHalf() { if (F.step < 0) { F.step = 0; F.phase = 0; } else if (F.phase === 0) F.phase = 1; else { F.step++; F.phase = 0; } }
+function fPlay() { pause(); if (F.step >= nModes()) { F.step = -1; F.phase = 0; } F.playing = true; F.acc = 0.5; F.last = performance.now(); $('fplay').textContent = L().fpause; cancelAnimationFrame(F.raf); F.raf = requestAnimationFrame(fTick); }
+function fPause() { F.playing = false; $('fplay').textContent = L().fplay; cancelAnimationFrame(F.raf); }
+function fTick(now) {
+  if (!F.playing) return;
+  const dt = Math.min(0.1, (now - F.last) / 1000); F.last = now; F.acc += dt * F.speed;
+  while (F.acc >= 0.5) { F.acc -= 0.5; fAdvanceHalf(); if (F.step >= nModes()) { fPause(); break; } }
+  fRenderAll(); if (F.playing) F.raf = requestAnimationFrame(fTick);
+}
+function fStep(dir) {
+  fPause(); pause();
+  const NM = nModes();
+  if (dir > 0) { if (F.step < 0) { F.step = 0; F.phase = 1; } else if (F.step >= NM) return; else if (F.phase === 0) F.phase = 1; else { F.step++; F.phase = 1; if (F.step >= NM) { F.step = NM; F.phase = 0; } } }
+  else { if (F.step <= 0) { F.step = -1; F.phase = 0; } else if (F.step >= NM) { F.step = NM - 1; F.phase = 1; } else { F.step--; F.phase = 1; } }
+  fRenderAll();
+}
+
+function render() {
+  const t = st.L.tOf(st.u), i = E.indexAt(st.sim, t), sim = st.sim;
+  const x = st.L.xOfU(st.u);
+  st.cursorEl.setAttribute('transform', `translate(${x.toFixed(2)},0)`); st.revealEl.setAttribute('width', x.toFixed(2));
+  if (!st.scrubbing) {                                   // keep the cursor in view when the diagram is wider than its box
+    const fig = $('figwrap').parentElement, svg = $('figwrap').querySelector('svg');
+    if (fig.scrollWidth > fig.clientWidth + 2) {
+      const rect = svg.getBoundingClientRect(), fr = fig.getBoundingClientRect();
+      const cx = rect.left - fr.left + fig.scrollLeft + x * rect.width / st.L.width;
+      if (cx < fig.scrollLeft + 60 || cx > fig.scrollLeft + fig.clientWidth - 80) fig.scrollLeft = Math.max(0, cx - fig.clientWidth * 0.3);
+    }
+  }
+  const bi = bandAt(t), d = L(), B = st.S.bands;
+  if (bi >= 0) { st.hlEl.setAttribute('x', st.bandX(bi).toFixed(2)); st.hlEl.setAttribute('width', st.bandW(bi).toFixed(2)); st.hlEl.setAttribute('opacity', '0.8'); }
+  else st.hlEl.setAttribute('opacity', '0');
+  for (let q = 0; q < B.length; q++) { const el = $('trh' + q); if (el) el.classList.toggle('on', q === bi); }
+  const seg = st.u >= st.L.uEnd - 1e-6 ? d.seg.end : segmentText(t);
+  const bandTxt = bi >= 0 ? `<b>${mk(B[bi].label)}</b> · ` : '';
+  $('status').innerHTML = d.status(t.toFixed(1), bandTxt, sim.kxM[i].toFixed(2), sim.kyM[i].toFixed(2), mk(seg));
+  fResetIfStale(i);
+  renderSpins(i); renderK(i); renderFourier(i);
+}
+
+/* ---------- wiring ---------- */
+for (const id of ['T1', 'T2']) $(id).addEventListener('input', () => { pause(); rebuild(); });
+$('phantom').addEventListener('change', () => applyLang());
+$('compress').addEventListener('change', e => { const t = st.L.tOf(st.u); st.compress = e.target.checked; pause(); rebuild(); st.u = st.L.uOf(t); render(); });
+$('seqSel').addEventListener('change', e => selectSequence(e.target.value));
+$('speed').addEventListener('input', readSliders);
+$('fplay').addEventListener('click', () => F.playing ? fPause() : fPlay());
+$('freset').addEventListener('click', () => { fPause(); F.step = -1; F.phase = 0; fRenderAll(); });
+$('fprev').addEventListener('click', () => fStep(-1)); $('fnext').addEventListener('click', () => fStep(1));
+for (const inp of $('gainSeg').querySelectorAll('input')) inp.addEventListener('change', e => { if (e.target.checked) { F.gain = +e.target.value; for (const lb of $('gainSeg').querySelectorAll('label')) lb.classList.toggle('on', lb.contains(e.target)); if (st.sim) renderFourier(curIndex()); } });
+$('fspeed').addEventListener('input', () => { F.speed = +$('fspeed').value / 10; $('vFspeed').textContent = F.speed.toFixed(1) + ' ' + L().fspeedUnit; });
+$('phantom').addEventListener('change', e => { st.phantom = e.target.value; pause(); rebuild(); });
+$('nsel').addEventListener('change', e => { st.N = +e.target.value; pause(); fPause(); F.step = -1; F.phase = 0; F.data = null; st.u = 0; applyLang(); rebuild(); });
+for (const id of ['modeDensity', 'modePhase', 'modeTissue']) $(id).addEventListener('change', e => { if (e.target.checked) { st.cellMode = e.target.value; $('labDensity').classList.toggle('on', st.cellMode === 'density'); $('labPhase').classList.toggle('on', st.cellMode === 'phase'); $('labTissue').classList.toggle('on', st.cellMode === 'tissue'); applyLang(); render(); } });
+$('relaxOverride').addEventListener('change', () => { pause(); rebuild(); });
+$('linear').addEventListener('change', e => { st.linear = e.target.checked; applyLang(); render(); });
+$('play').addEventListener('click', () => st.playing ? pause() : play());
+$('reset').addEventListener('click', () => { pause(); st.u = 0; render(); });
+$('prev').addEventListener('click', () => stepEvent(-1)); $('next').addEventListener('click', () => stepEvent(1));
+$('lang').addEventListener('click', () => { st.lang = st.lang === 'pt' ? 'en' : 'pt'; applyLang(); rebuild(); });
+function registerSequence(def) {
+  if (!def || typeof def !== 'object' || !def.id || !Array.isArray(def.events)) throw new Error('not a sequence file');
+  E.compile(def, E.paramDefaults(def), st.lang, st.N);        // validate with defaults
+  if (!st.defs[def.id]) { const o = document.createElement('option'); o.value = def.id; $('seqSel').appendChild(o); st.order.push(def.id); }
+  st.defs[def.id] = def;
+}
+$('loadseq').addEventListener('click', () => $('seqfile').click());
+$('seqfile').addEventListener('change', e => {
+  const file = e.target.files[0]; if (!file) return;
+  const rd = new FileReader();
+  rd.onload = () => { try { const def = JSON.parse(rd.result); registerSequence(def); selectSequence(def.id); $('err').textContent = L().loaded + loc(def.name); } catch (ex) { $('err').textContent = L().errSeq + ex.message; } };
+  rd.readAsText(file); e.target.value = '';
+});
+$('copyseq').addEventListener('click', () => {
+  const btn = $('copyseq'), txt = JSON.stringify(st.def, null, 2);
+  const done = ok => { btn.textContent = ok ? L().copied2 : L().copyFail; setTimeout(() => { btn.textContent = L().copyseq; }, 1800); };
+  try { navigator.clipboard.writeText(txt).then(() => done(true), () => done(false)); } catch (ex) { done(false); }
+});
+$('copysvg').addEventListener('click', () => {
+  const d = L(), svg = D.build(st.S, st.sim, drawOpts({ revealAll: true })).svg, btn = $('copysvg');
+  const done = ok => { btn.textContent = ok ? d.copied : d.copyFail; setTimeout(() => { btn.textContent = L().copy; }, 1800); };
+  try { navigator.clipboard.writeText(svg).then(() => done(true), () => done(false)); } catch (e) { done(false); }
+});
+document.addEventListener('keydown', e => {
+  const tag = e.target.tagName, typ = e.target.type;
+  if (tag === 'SELECT' || tag === 'BUTTON' && e.code === 'Space') return;
+  if (tag === 'INPUT' && !(typ === 'checkbox' && e.code !== 'Space')) return;   // sliders/radios keep their keys; checkboxes keep Space
+  if (e.code === 'Space') { e.preventDefault(); st.playing ? pause() : play(); }
+  else if (e.key === 'ArrowRight') { e.preventDefault(); stepEvent(1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); stepEvent(-1); }
+  else if (e.key === 'Home') { e.preventDefault(); pause(); st.u = 0; render(); }
+});
+const ro = new ResizeObserver(() => { if (st.sim) render(); }); ro.observe($('spins')); ro.observe($('kspace')); ro.observe($('img')); ro.observe($('mode'));
+const mq = window.matchMedia('(prefers-color-scheme: dark)');
+mq.addEventListener('change', () => { refreshTheme(); renderWheel(); render(); });
+new MutationObserver(() => { refreshTheme(); renderWheel(); render(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+for (const def of SEQUENCES) registerSequence(def);
+refreshTheme(); selectSequence('se'); renderWheel();
+})();
+</script>

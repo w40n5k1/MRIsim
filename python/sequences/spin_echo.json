@@ -1,0 +1,50 @@
+{
+  "id": "se",
+  "format": "didactic-mri-sequence/1",
+  "name": { "pt": "Spin Echo", "en": "Spin Echo" },
+  "subtitle": { "pt": "um exemplo de sequência de pulsos, e o sinal de RF gerado", "en": "an example of a pulse sequence, and the RF signal it generates" },
+  "lead": { "pt": "Um 90° e um 180° por repetição; uma linha k_y por TR, N TRs. TE curto e TR longo dão ponderação em densidade de prótons; TE longo, em T2; TR curto, em T1. Fatia já selecionada; matriz N×N no plano xy, um isocromato por pixel, referencial girante. Arraste sobre o diagrama para percorrer o tempo.",
+            "en": "One 90° and one 180° per repetition; one k_y line per TR, N TRs. Short TE and long TR give proton-density weighting; long TE, T2; short TR, T1. Slice already selected; N×N array in the xy plane, one isochromat per pixel, rotating frame. Drag across the diagram to scrub through time." },
+  "relax": { "T1": 80, "T2": 60 },
+  "phantom": "squareAir",
+  "params": [
+    { "id": "TE", "label": "TE", "min": 22, "max": 200, "step": 2, "default": 32, "unit": "ms" },
+    { "id": "TR", "label": "TR", "min": 100, "max": 4000, "step": 50, "default": 2000, "unit": "ms" },
+    { "id": "spoiler", "type": "checkbox", "default": true, "label": { "pt": "zerar M⊥ ao fim do TR (spoiler ideal)", "en": "zero M⊥ at end of TR (ideal spoiler)" } }
+  ],
+  "constants": { "w": 5, "tLead": 2, "tauEnc": 6, "tauRo": 12 },
+  "tables": { "pe": "range(HALF, -HALF, -1)" },
+  "shots": "N",
+  "TR": "TR",
+  "vars": { "Apre": "N/2", "t90": "tLead + w/2", "tEnc": "tLead + w", "t180": "t90 + TE/2", "tEcho": "t90 + TE" },
+  "shotVars": { "step": "pe[n]" },
+  "shotLabel": "TR ${n+1} · G_pe = ${+step} → k_y = ${+(-step)}",
+  "events": [
+    { "type": "rf", "t": "tLead", "dur": "w", "flip": 90, "axis": "y", "desc": { "pt": "pulso de 90° (rotação em torno de y)", "en": "90° pulse (rotation about y)" } },
+    { "type": "grad", "axis": "x", "t": "tEnc", "dur": "tauEnc", "area": "Apre", "desc": { "pt": "pré-fase de leitura (Gfe): kₓ vai a +${N/2}", "en": "readout prephaser (Gfe): kₓ goes to +${N/2}" } },
+    { "type": "grad", "axis": "y", "t": "tEnc", "dur": "tauEnc", "area": "step", "label": "${+step}", "ghost": "pe", "desc": { "pt": "codificação de fase (Gpe): k_y vai a ${+step}", "en": "phase encoding (Gpe): k_y goes to ${+step}" } },
+    { "type": "rf", "t": "t180 - w/2", "dur": "w", "flip": 180, "axis": "x", "refocus": true, "desc": { "pt": "pulso de 180° (rotação em torno de x): fases invertidas, k → −k", "en": "180° pulse (rotation about x): phases reversed, k → −k" } },
+    { "type": "grad", "axis": "x", "t": "tEcho - tauRo/2", "dur": "tauRo", "area": "N", "desc": { "pt": "leitura: Gfe varre kₓ de ${-N/2} a +${N/2}", "en": "readout: Gfe sweeps kₓ from ${-N/2} to +${N/2}" } },
+    { "type": "adc", "t": "tEcho - tauRo/2", "dur": "tauRo", "n": "N", "label": "SE", "desc": { "pt": "amostras em kₓ = ${-HALF}…+${HALF}", "en": "samples at kₓ = ${-HALF}…+${HALF}" } },
+    { "type": "spoil", "t": "TR", "if": "spoiler" },
+    { "type": "arrow", "t": "t90", "to": "tEcho", "label": "T_E", "style": "te", "level": 0 },
+    { "type": "arrow", "t": "t90", "to": "TR + t90", "label": "T_R", "style": "tr", "level": 1 },
+    { "type": "mark", "t": "t90", "style": "te" },
+    { "type": "mark", "t": "t180", "label": "T_E/2", "style": "te" },
+    { "type": "mark", "t": "tEcho", "label": "T_E", "style": "te" }
+  ],
+  "notes": {
+    "pt": [
+      "Sequência: 90° em torno de y; pré-fasador de leitura (+N/2 Δk) e codificação de fase simultâneos, antes do 180°; 180° em torno de x (k → −k); leitura (+N Δk, kₓ de −N/2 a +N/2) com o eco no centro. G_pe desce um passo por TR (de +(N−1)/2 a −(N−1)/2) e o 180° inverte o sinal: o espaço k enche de baixo para cima.",
+      "Pré-fasar antes do 180° roda em paralelo com a codificação de fase (TE mínimo menor) e deixa o FID de um 180° imperfeito coerente só na borda da janela; um lobo depois do 180° o refocalizaria sobre o eco.",
+      "Spoiler: num scanner, um gradiente forte ao fim do TR desfasa a magnetização transversal que sobrou do decaimento T2, para que o 90° seguinte não a leve ao eixo z, onde o 180° seguinte a refocalizaria como eco estimulado espúrio. A caixa idealiza isso como M⊥ → 0. Com os tecidos reais e TR = 2000 ms o resíduo é desprezível e desmarcar não muda nada visível; o efeito aparece com T1/T2 globais, T2 = ∞ ou TR ≲ 2·T2.",
+      "A partir do 2º TR a magnetização longitudinal disponível é a recuperada, não M₀; é a origem do pequeno resíduo da reconstrução junto com o decaimento T2 ao longo da janela de leitura."
+    ],
+    "en": [
+      "Sequence: 90° about y; readout prephaser (+N/2 Δk) and phase encoding simultaneous, before the 180°; 180° about x (k → −k); readout (+N Δk, kₓ from −N/2 to +N/2) with the echo at the center. G_pe steps down one unit per TR (from +(N−1)/2 to −(N−1)/2) and the 180° flips the sign: k-space fills bottom-up.",
+      "Prephasing before the 180° runs in parallel with phase encoding (shorter minimum TE) and leaves the FID of an imperfect 180° coherent only at the edge of the window; a lobe after the 180° would refocus it onto the echo.",
+      "Spoiler: in a scanner, a strong gradient at the end of the TR dephases the transverse magnetization left after T2 decay, so the next 90° does not carry it to the z axis, where the following 180° would refocus it as a spurious stimulated echo. The box idealizes this as M⊥ → 0. With real tissues and TR = 2000 ms the leftover is negligible and unchecking changes nothing visible; the effect shows with global T1/T2, T2 = ∞ or TR ≲ 2·T2.",
+      "From the 2nd TR on the available longitudinal magnetization is the recovered one, not M₀; together with T2 decay across the readout window it is the origin of the small reconstruction residual."
+    ]
+  }
+}

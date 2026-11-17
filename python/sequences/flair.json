@@ -1,0 +1,61 @@
+{
+  "id": "flair",
+  "format": "didactic-mri-sequence/1",
+  "name": { "pt": "FLAIR", "en": "FLAIR" },
+  "subtitle": { "pt": "inversão–recuperação com leitura fast spin echo; TI escolhido para anular o líquor", "en": "inversion recovery with a fast spin-echo readout; TI chosen to null CSF" },
+  "lead": { "pt": "Um 180° de inversão, espera TI, depois o fast spin echo (90° + N pulsos de 180°, uma linha k_y por eco). Com TI = T1·ln 2 de um tecido, esse tecido tem M_z = 0 no 90° e não dá sinal. Use o objeto \"cérebro\" (tecidos com T1 e T2 próprios); com os outros objetos T1 e T2 vêm dos cursores e o TI anula a imagem inteira.",
+            "en": "A 180° inversion, a wait TI, then the fast spin echo (90° + N 180° pulses, one k_y line per echo). With TI = T1·ln 2 of a tissue, that tissue has M_z = 0 at the 90° and gives no signal. Use the \"brain\" phantom (tissues with their own T1 and T2); with the other phantoms T1 and T2 come from the sliders and TI nulls the whole image." },
+  "relax": { "T1": 850, "T2": 80 },
+  "phantom": "brain",
+  "envelope": false,
+  "params": [
+    { "id": "TI", "label": "TI", "min": 50, "max": 3500, "step": 50, "default": 2750, "unit": "ms", "title": { "pt": "tempo de inversão (centro do 180° de inversão ao centro do 90°)", "en": "inversion time (center of the inversion 180° to center of the 90°)" } },
+    { "id": "ESP", "label": "ESP", "min": 26, "max": 60, "step": 2, "default": 26, "unit": "ms", "title": { "pt": "espaçamento entre ecos", "en": "echo spacing" } },
+    { "id": "order", "type": "select", "default": "linear", "label": { "pt": "ordem de k_y", "en": "k_y order" },
+      "options": [
+        { "value": "linear", "label": { "pt": "linear (−(N−1)/2…+(N−1)/2)", "en": "linear (−(N−1)/2…+(N−1)/2)" }, "values": { "pe": "range(-HALF, HALF, 1)" } },
+        { "value": "centric", "label": { "pt": "centro primeiro", "en": "center first" }, "values": { "pe": "centric(HALF)" } },
+        { "value": "centerLast", "label": { "pt": "centro por último", "en": "center last" }, "values": { "pe": "rev(centric(HALF))" } }
+      ] }
+  ],
+  "constants": { "w": 5, "tLead": 2, "tauPre": 6, "tauPe": 4, "tauRo": 12, "tTail": 300 },
+  "shots": 1,
+  "vars": { "Apre": "N/2", "NECHO": "N", "tInv": "tLead + w/2", "t90": "tInv + TI", "tActive": "t90 + NECHO*ESP + tauRo/2 + tauPe", "iTE": "indexOf(pe, 0)", "TEeff": "(iTE + 1)*ESP" },
+  "TR": "tActive + tTail",
+  "events": [
+    { "type": "rf", "t": "tLead", "dur": "w", "flip": 180, "axis": "x", "desc": { "pt": "180° de inversão: M_z → −M_z em todos os pixels", "en": "inversion 180°: M_z → −M_z in every pixel" } },
+    { "type": "rf", "t": "t90 - w/2", "dur": "w", "flip": 90, "axis": "y", "desc": { "pt": "pulso de 90°: o M_z recuperado durante TI vai para o plano; quem tem M_z = 0 não dá sinal", "en": "90° pulse: the M_z recovered during TI goes to the plane; whoever has M_z = 0 gives no signal" } },
+    { "type": "grad", "axis": "x", "t": "t90 + w/2", "dur": "tauPre", "area": "Apre", "desc": { "pt": "pré-fase de leitura (Gfe): kₓ vai a +${N/2}", "en": "readout prephaser (Gfe): kₓ goes to +${N/2}" } },
+    { "type": "repeat", "count": "NECHO", "var": "i",
+      "vars": { "t180": "t90 + ESP/2 + i*ESP", "tEcho": "t90 + (i + 1)*ESP", "step": "pe[i]", "roStart": "tEcho - tauRo/2" },
+      "events": [
+        { "type": "band", "t": "t180", "label": { "pt": "eco ${i+1} · k_y = ${+step}", "en": "echo ${i+1} · k_y = ${+step}" } },
+        { "type": "rf", "t": "t180 - w/2", "dur": "w", "flip": 180, "axis": "x", "refocus": true, "desc": { "pt": "pulso de 180° (rotação em torno de x): fases invertidas, k → −k; kₓ = ${-N/2}", "en": "180° pulse (rotation about x): phases reversed, k → −k; kₓ = ${-N/2}" } },
+        { "type": "grad", "axis": "y", "t": "roStart - tauPe", "dur": "tauPe", "area": "step", "label": "${+step}", "desc": { "pt": "codificação de fase (Gpe): k_y vai a ${+step}", "en": "phase encoding (Gpe): k_y goes to ${+step}" } },
+        { "type": "grad", "axis": "x", "t": "roStart", "dur": "tauRo", "area": "N", "desc": { "pt": "leitura: Gfe varre kₓ de ${-N/2} a +${N/2}", "en": "readout: Gfe sweeps kₓ from ${-N/2} to +${N/2}" } },
+        { "type": "adc", "t": "roStart", "dur": "tauRo", "n": "N", "desc": { "pt": "amostras em kₓ = ${-HALF}…+${HALF}", "en": "samples at kₓ = ${-HALF}…+${HALF}" } },
+        { "type": "grad", "axis": "y", "t": "roStart + tauRo", "dur": "tauPe", "area": "-step", "desc": { "pt": "rebobinador de Gpe: k_y volta a 0 antes do próximo 180°", "en": "Gpe rewinder: k_y back to 0 before the next 180°" } }
+      ] },
+    { "type": "band", "t": "tInv", "label": { "pt": "inversão · TI = ${TI} ms", "en": "inversion · TI = ${TI} ms" } },
+    { "type": "arrow", "t": "tInv", "to": "t90", "label": "T_I", "style": "tr", "level": 1 },
+    { "type": "arrow", "t": "t90", "to": "t90 + TEeff", "label": "T_{E,ef}", "style": "te", "level": 0 },
+    { "type": "mark", "t": "tInv", "style": "tr", "level": 1 },
+    { "type": "mark", "t": "t90", "style": "tr", "level": 1 }
+  ],
+  "notes": {
+    "pt": [
+      "Sequência: 180° de inversão (em torno de x; M⊥ é zero em repouso, só M_z é invertido), espera TI, e então o fast spin echo: 90°, pré-fasador, N pulsos de 180° com uma linha k_y por eco. Recuperação durante TI: M_z(TI) = M₀(1 − 2e^{−TI/T1}); zera em TI = T1·ln 2. Para o líquor (T1 ≈ 4000 ms) isso dá TI ≈ 2770 ms; substância branca (850 ms) e cinzenta (1300 ms) já recuperaram boa parte de M₀ e dão sinal. É o FLAIR: imagem ponderada em T2 com o líquor escuro, onde lesões periventriculares deixam de se esconder atrás do líquor brilhante.",
+      "Em TI menor que T1·ln 2 de um tecido, seu M_z no 90° é negativo: o sinal nasce com fase π (ciano no espaço k, e vetores apontando para −x nas esferas). A imagem é mostrada em módulo, como no scanner, então esse tecido aparece claro, não escuro: só o tecido com M_z = 0 some.",
+      "O intervalo TI (milhares de ms) aparece comprimido no diagrama, como as caudas de TR: o tracejado marca o trecho fora de escala. Desmarque \"comprimir TR\" para ver em escala.",
+      "Borramento do trem de ecos: cada eco perde e^{−ESP/T2} (28% para a substância branca com ESP = 26 ms); com N linhas o filtro em k_y tem largura ≈ N·ESP/(π·T2) pixels (≈ 0,9 pixel com N = 9), uma fração grande de uma imagem de N pixels. Com a ordem \"centro primeiro\" o filtro é passa-baixa e o líquor nulo reaparece cinza por borramento das vizinhanças; a ordem linear (padrão aqui) preserva muito melhor o módulo. Num scanner com 256 linhas o mesmo ESP/T2 borra uma fração de pixel.",
+      "Objetos: com \"cérebro\", cada pixel tem (M₀, T1, T2) do seu tecido; com \"T1/T2 globais\" marcado, TI = T1·ln 2 anula a imagem inteira."
+    ],
+    "en": [
+      "Sequence: inversion 180° (about x; M⊥ is zero at rest, only M_z is inverted), a wait TI, then the fast spin echo: 90°, prephaser, N 180° pulses with one k_y line per echo. Recovery during TI: M_z(TI) = M₀(1 − 2e^{−TI/T1}); it crosses zero at TI = T1·ln 2. For CSF (T1 ≈ 4000 ms) that is TI ≈ 2770 ms; white (850 ms) and gray matter (1300 ms) have recovered most of M₀ and give signal. That is FLAIR: a T2-weighted image with dark CSF, where periventricular lesions stop hiding behind bright CSF.",
+      "At TI below a tissue's T1·ln 2, its M_z at the 90° is negative: the signal is born with phase π (cyan in k-space, vectors pointing to −x in the spheres). The image is shown as a magnitude, as on the scanner, so that tissue appears bright, not dark: only the tissue with M_z = 0 vanishes.",
+      "The TI interval (thousands of ms) is compressed in the diagram, like the TR tails: the dashed stretch is off scale. Uncheck \"compress TR\" to see it to scale.",
+      "Echo-train blurring: each echo loses e^{−ESP/T2} (28% for white matter with ESP = 26 ms); with N lines the k_y filter has a width ≈ N·ESP/(π·T2) pixels (≈ 0.9 pixel at N = 9), a large fraction of an N-pixel image. With \"center first\" the filter is low-pass and the nulled CSF reappears gray by blurring from its neighbors; linear order (the default here) preserves the magnitude far better. A 256-line scanner image with the same ESP/T2 blurs by a fraction of a pixel.",
+      "Phantoms: with \"brain\", each pixel has the (M₀, T1, T2) of its tissue; with \"global T1/T2\" checked, TI = T1·ln 2 nulls the whole image."
+    ]
+  }
+}

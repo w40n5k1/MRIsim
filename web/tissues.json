@@ -1,0 +1,13 @@
+{
+  "format": "didactic-mri-tissues/1",
+  "field": "3 T (approximate literature values; T1 and T2 in ms, pd relative to CSF = 1)",
+  "tissues": {
+    "gm":     { "name": { "pt": "subst. cinzenta", "en": "gray matter" },  "pd": 0.85, "T1": 1300, "T2": 100,  "color": "#8f8f8f" },
+    "wm":     { "name": { "pt": "subst. branca",   "en": "white matter" }, "pd": 0.70, "T1": 850,  "T2": 80,   "color": "#9fd0f3" },
+    "csf":    { "name": { "pt": "líquor",          "en": "CSF" },          "pd": 1.00, "T1": 4000, "T2": 2000, "color": "#2457c5" },
+    "fat":    { "name": { "pt": "gordura",         "en": "fat" },          "pd": 0.90, "T1": 380,  "T2": 130,  "color": "#f0c244" },
+    "bone":   { "name": { "pt": "osso cortical",   "en": "cortical bone" },"pd": 0.00, "T1": 1000, "T2": 1,    "color": "#efe8d6" },
+    "air":    { "name": { "pt": "ar",              "en": "air" },          "pd": 0.00, "T1": 1000, "T2": 1,    "color": "#000000" },
+    "lesion": { "name": { "pt": "lesão",           "en": "lesion" },       "pd": 0.90, "T1": 1500, "T2": 200,  "color": "#d8413c" }
+  }
+}

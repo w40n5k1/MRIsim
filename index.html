@@ -604,7 +604,7 @@ const I18N = {
     play: '▶ Aquisição', pause: '❚❚ Pausar', reset: '⟲ Início', prev: '◀ evento', next: 'evento ▶', speed: 'velocidade',
     phantom: 'objeto', squareAir: 'quadrado (cheio/vazio)', letterFAir: 'letra F (cheio/vazio)', uniform: 'uniforme (SC)', square: 'quadrado (SC sobre SB)', letterF: 'letra F (SC sobre SB)', ramp: 'rampa de M₀ (SC)', brain: 'cérebro', uniformDesc: '', 
     modeDensity: 'intensidade', modePhase: 'intensidade + fase', modeTissue: 'tecido', relaxOverride: 'T1/T2 globais (ignorar tecidos)', tissueHdr: 'tecido: PD · T1 · T2 (ms, 3 T)', linear: 'intensidade linear (sem √)', compress: 'comprimir TR', loadseq: 'carregar sequência (.json)', copyseq: 'copiar JSON da sequência', lang: 'EN', copy: 'copiar SVG do diagrama', copied: 'copiado ✓', copyFail: 'falhou — selecione e copie',
-    tSpins: n => `Matriz ${n}×${n} de pixels (referencial girante)`, sSpinsDensity: 'cinza = densidade de prótons M₀ · vermelho: M · azul: M∥ (z) e M⊥ (xy)', sSpinsTissue: 'cor = tecido (T1, T2 e M₀ próprios) · vermelho: M · azul: M∥ (z) e M⊥ (xy)', sSpinsPhase: 'cor = fase de M⊥ · intensidade = |M⊥| · vermelho: M · azul: M∥ (z) e M⊥ (xy)',
+    tSpins: n => `Matriz ${n}×${n} de pixels (referencial girante)`, sSpinsDensity: 'escala de cinza = densidade de prótons M₀ · vermelho: M · azul: M∥ (z) e M⊥ (xy)', sSpinsTissue: 'cor = tecido (T1, T2 e M₀ próprios) · vermelho: M · azul: M∥ (z) e M⊥ (xy)', sSpinsPhase: 'cor = fase de M⊥ · intensidade = |M⊥| · vermelho: M · azul: M∥ (z) e M⊥ (xy)',
     tK: 'Espaço k (kₓ, k_y)', peDesc: 'codificação por fase', feDesc: 'codificação por frequência', envDesc: 'e<tspan dy="-5" font-size="8">−t/T2</tspan>',
     fplay: '▶ Fourier reversa', fpause: '❚❚ Pausar', freset: '⟲ Início', fprev: '◀ modo', fnext: 'modo ▶', fspeed: 'velocidade', fspeedUnit: 'modos/s',
     tImg: 'Imagem', tMode: 'Modo', tResid: 'Resíduo',
@@ -612,7 +612,7 @@ const I18N = {
     sImg: (s, n, nm, np) => `|Σ de ${s}/${nm} modos| (módulo) · ${n}/${np} amostras · branco = máximo da reconstrução completa`,
     sModeIdle: 'aguardando a Fourier reversa',
     sModeDC: (z) => `modo (0, 0): constante · × |S(0,0)| = ${z} ΣM₀ (vermelho = real positivo)`,
-    sMode: (kx, ky, z, ph) => `modo (kₓ, k_y) = (${kx}, ${ky}) e (${-kx}, ${-ky}): cos[2π(kₓx + k_yy)/5 + φ], padrão normalizado, φ = ${ph}° · × |S(k) + S(−k)*| = ${z} ΣM₀ (soma do par, real positiva: vermelho)`,
+    sMode: (kx, ky, z, ph) => `modo (kₓ, k_y) = (${kx}, ${ky}) e (${-kx}, ${-ky}): cos[2π(kₓx + k_yy)/${st.N} + φ], padrão normalizado, φ = ${ph}° · × |S(k) + S(−k)*| = ${z} ΣM₀ (soma do par, real positiva: vermelho)`,
     lGain: 'ganho do resíduo', sResid: (rmax, g) => `resíduo = imagem/c − imagem ideal, onde a imagem ideal é |M⊥| de cada pixel no eco central (o contraste que a sequência pretende, sem o filtro do espaço k) e c um fator de escala por mínimos quadrados · mesma escala de cinza da imagem, cinza médio = 0, ganho ×${g} · máx |Δ| = ${rmax} do máximo ideal`,
     sResid0: 'resíduo = imagem/c − imagem ideal · ≈ 0 (reconstrução exata)',
     fIdle: 'pronto (usa as amostras já adquiridas)', fRun: (s, kx, ky, nm) => `modo ${s}/${nm} · (kₓ, k_y) = ±(${kx}, ${ky})`, fDone: nm => `${nm}/${nm} · reconstrução completa`,
@@ -660,7 +660,7 @@ const I18N = {
     play: '▶ Acquire', pause: '❚❚ Pause', reset: '⟲ Start', prev: '◀ event', next: 'event ▶', speed: 'speed',
     phantom: 'phantom', squareAir: 'square (filled/empty)', letterFAir: 'letter F (filled/empty)', uniform: 'uniform (GM)', square: 'square (GM on WM)', letterF: 'letter F (GM on WM)', ramp: 'M₀ ramp (GM)', brain: 'brain', 
     modeDensity: 'intensity', modePhase: 'intensity + phase', modeTissue: 'tissue', relaxOverride: 'global T1/T2 (ignore tissues)', tissueHdr: 'tissue: PD · T1 · T2 (ms, 3 T)', linear: 'linear intensity (no √)', compress: 'compress TR', loadseq: 'load sequence (.json)', copyseq: 'copy sequence JSON', lang: 'PT', copy: 'copy diagram SVG', copied: 'copied ✓', copyFail: 'failed — select and copy',
-    tSpins: n => `${n}×${n} pixel array (rotating frame)`, sSpinsDensity: 'gray = proton density M₀ · red: M · blue: M∥ (z) and M⊥ (xy)', sSpinsTissue: 'color = tissue (own T1, T2 and M₀) · red: M · blue: M∥ (z) and M⊥ (xy)', sSpinsPhase: 'color = phase of M⊥, intensity = |M⊥| · red: M · blue: M∥ (z) and M⊥ (xy)',
+    tSpins: n => `${n}×${n} pixel array (rotating frame)`, sSpinsDensity: 'gray scale = proton density M₀ · red: M · blue: M∥ (z) and M⊥ (xy)', sSpinsTissue: 'color = tissue (own T1, T2 and M₀) · red: M · blue: M∥ (z) and M⊥ (xy)', sSpinsPhase: 'color = phase of M⊥, intensity = |M⊥| · red: M · blue: M∥ (z) and M⊥ (xy)',
     tK: 'k-space (kₓ, k_y)', peDesc: 'phase encoding', feDesc: 'frequency encoding', envDesc: 'e<tspan dy="-5" font-size="8">−t/T2</tspan>',
     fplay: '▶ Inverse Fourier', fpause: '❚❚ Pause', freset: '⟲ Start', fprev: '◀ mode', fnext: 'mode ▶', fspeed: 'speed', fspeedUnit: 'modes/s',
     tImg: 'Image', tMode: 'Mode', tResid: 'Residual',
@@ -668,7 +668,7 @@ const I18N = {
     sImg: (s, n, nm, np) => `|Σ of ${s}/${nm} modes| (magnitude) · ${n}/${np} samples · white = maximum of the full reconstruction`,
     sModeIdle: 'waiting for the inverse Fourier',
     sModeDC: (z) => `mode (0, 0): constant · × |S(0,0)| = ${z} ΣM₀ (red = real positive)`,
-    sMode: (kx, ky, z, ph) => `mode (kₓ, k_y) = (${kx}, ${ky}) and (${-kx}, ${-ky}): cos[2π(kₓx + k_yy)/5 + φ], normalized pattern, φ = ${ph}° · × |S(k) + S(−k)*| = ${z} ΣM₀ (pair sum, real positive: red)`,
+    sMode: (kx, ky, z, ph) => `mode (kₓ, k_y) = (${kx}, ${ky}) and (${-kx}, ${-ky}): cos[2π(kₓx + k_yy)/${st.N} + φ], normalized pattern, φ = ${ph}° · × |S(k) + S(−k)*| = ${z} ΣM₀ (pair sum, real positive: red)`,
     lGain: 'residual gain', sResid: (rmax, g) => `residual = image/c − ideal image, where the ideal image is each pixel's |M⊥| at the central echo (the contrast the sequence intends, without the k-space filter) and c a least-squares scale factor · same gray scale as the image, mid-gray = 0, gain ×${g} · max |Δ| = ${rmax} of the ideal maximum`,
     sResid0: 'residual = image/c − ideal image · ≈ 0 (exact reconstruction)',
     fIdle: 'ready (uses the samples acquired so far)', fRun: (s, kx, ky, nm) => `mode ${s}/${nm} · (kₓ, k_y) = ±(${kx}, ${ky})`, fDone: nm => `${nm}/${nm} · reconstruction complete`,
@@ -774,7 +774,8 @@ function applyLang() {
   buildParamControls();
   $('tSpins').textContent = d.tSpins(st.N); $('sSpins').textContent = st.cellMode === 'phase' ? d.sSpinsPhase : (st.cellMode === 'tissue' ? d.sSpinsTissue : d.sSpinsDensity);
   const used = new Set(PH().label);
-  $('tissueLegend').innerHTML = `<span>${d.tissueHdr}</span>` + Object.entries(TISSUES).filter(([k]) => used.has(k)).map(([k, t]) => `<span><i style="background:${t.color}"></i>${loc(t.name)} ${t.pd.toFixed(2)} · ${t.T1} · ${t.T2}</span>`).join(''); $('tK').textContent = d.tK;
+  $('tissueLegend').innerHTML = `<span>${d.tissueHdr}</span>` + Object.entries(TISSUES).filter(([k]) => used.has(k)).map(([k, t]) => `<span><i style="background:${t.color}"></i>${loc(t.name)} ${t.pd.toFixed(2)} · ${t.T1} · ${t.T2}</span>`).join('');
+  $('tissueLegend').hidden = st.cellMode !== 'tissue'; $('tK').textContent = d.tK;
   $('fplay').textContent = F.playing ? d.fpause : d.fplay; $('freset').textContent = d.freset; $('fprev').textContent = d.fprev; $('fnext').textContent = d.fnext;
   $('lFspeed').textContent = d.fspeed; $('vFspeed').textContent = (F.speed = +$('fspeed').value / 10).toFixed(1) + ' ' + d.fspeedUnit;
   $('tImg').textContent = d.tImg; $('lGain').textContent = d.lGain;

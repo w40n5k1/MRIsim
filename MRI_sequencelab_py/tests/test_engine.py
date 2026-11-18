@@ -17,6 +17,9 @@
 5. test_samples_do_not_depend_on_the_time_grid: relaxation, precession and pulses are applied in closed form
    between grid instants, so the time grid sets what is stored and drawn and not the accuracy; the samples must
    be the same on any grid.
+6. test_reconstruction_does_not_depend_on_the_echo_phase: the image is the same whether the echo forms along
+   +x, +y, -x or -y, and equals the real part of the inverse DFT of the samples after the phase of the echo
+   is removed.
 """
 import json
 import pathlib
@@ -25,7 +28,7 @@ import subprocess
 
 import numpy as np
 import pytest
-from mrisim import load_json, load_tissues, load_phantom, compile_sequence, simulate, pixel_xy
+from mrisim import load_json, load_tissues, load_phantom, compile_sequence, simulate, reconstruct, pixel_xy
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 TIS = load_tissues(ROOT / "tissues.json")
@@ -54,12 +57,12 @@ def test_samples_are_dft(seq, N):
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not available")
-@pytest.mark.parametrize("seq,phantom", [("spin_echo", "square_air"), ("fast_spin_echo", "square"), ("flair", "brain")])
-def test_matches_javascript(seq, phantom):
+@pytest.mark.parametrize("seq,phantom,N", [("spin_echo", "square_air", 9), ("fast_spin_echo", "square", 9), ("flair", "brain", 9),
+                                           ("spin_echo", "brain", 17)])          # 17: the largest N of the page
+def test_matches_javascript(seq, phantom, N):
     js = ROOT.parent / "MRI_sequencelab_web" / "seq_engine_v1.js"          # the browser version, next to this package
     if not js.exists():
         pytest.skip("JavaScript engine not found next to the package")
-    N = 9
     defn = load_json(ROOT / "sequences" / f"{seq}.json")
     ph = load_phantom(ROOT / "phantoms" / f"{phantom}.json", N, TIS)
     S = compile_sequence(defn, None, "pt", N)
@@ -125,3 +128,29 @@ def test_samples_do_not_depend_on_the_time_grid(seq, phantom):
         assert [(s["kx"], s["ky"]) for s in sim.samples] == [(s["kx"], s["ky"]) for s in ref.samples]
         worst = max(abs(a["S"] - b["S"]) for a, b in zip(sim.samples, ref.samples))
         assert worst < 1e-10 * ref.Smax, worst
+
+
+@pytest.mark.parametrize("ax90,ax180,phase_deg", [("y", "x", 0), ("x", "x", 90), ("x", "y", -90), ("y", "y", 180)])
+def test_reconstruction_does_not_depend_on_the_echo_phase(ax90, ax180, phase_deg):
+    """The echo forms along +x, +y, -y or -x according to the axes of the two pulses.  The reconstruction removes
+    that phase, arg S(0), before pairing k with -k, so the image must be the same in the four cases; and it is
+    the real part of the inverse DFT of the phase-corrected samples."""
+    import copy
+    N, H = 9, 4
+    ph = load_phantom(ROOT / "phantoms" / "letter_f_air.json", N, TIS)
+    base = load_json(ROOT / "sequences" / "spin_echo.json")
+    ref = reconstruct(simulate(compile_sequence(base, {"TR": 4000}, "pt", N), ph.M0, ph.T1, ph.T2))
+    d = copy.deepcopy(base)
+    for e in d["events"]:
+        if e["type"] == "rf":
+            e["axis"] = ax180 if e.get("refocus") else ax90
+    sim = simulate(compile_sequence(d, {"TR": 4000}, "pt", N), ph.M0, ph.T1, ph.T2)
+    rec = reconstruct(sim)
+    assert abs(np.angle(np.exp(1j * (rec.phase0 - np.radians(phase_deg))))) < 1e-9
+    assert np.abs(rec.image - ref.image).max() < 1e-9
+    assert np.abs(rec.residual - ref.residual).max() < 1e-9
+    K = np.zeros((N, N), complex)                 # k-space table, index (ky + H, kx + H)
+    for s in sim.samples:
+        K[s["ky"] + H, s["kx"] + H] = s["S"] * np.exp(-1j * rec.phase0)
+    idft = np.fft.fftshift(np.fft.ifft2(np.fft.ifftshift(K)))[::-1, :]        # index (row, col), row 0 at the top
+    assert np.abs(idft.real.ravel() - rec.image).max() < 1e-12

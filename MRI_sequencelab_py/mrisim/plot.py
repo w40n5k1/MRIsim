@@ -90,6 +90,14 @@ class Layout:
         return [(max(t0, a), min(t1, b), c) for a, b, _, _, c in self.segs if min(t1, b) > max(t0, a) + 1e-9]
 
 
+def axis_ticks(N: int) -> list:
+    """Tick positions of a pixel or k axis that runs from -(N-1)/2 to (N-1)/2: every integer while the labels
+    fit, then every 2, every 5, every 10."""
+    H = (N - 1) // 2
+    step = 1 if N <= 9 else 2 if N <= 15 else 5 if N <= 41 else 10
+    return [v for v in range(-H, H + 1) if v % step == 0]
+
+
 def _sinc(ax, xc, y0, halfw, A, color):
     """Draw a schematic RF pulse (apodized sinc) centered at xc with half-width halfw and height A."""
     u = np.linspace(-1, 1, 91)
@@ -125,7 +133,8 @@ def plot_diagram(S: Schedule, sim: Simulation | None = None, ax=None, compress: 
         x0, x1 = xu(b.t), xu(min(b.t1, S.t_end))
         if i % 2 == 1:
             ax.add_patch(Rectangle((x0, -0.9), x1 - x0, 4.6, color="#f2f2f2", zorder=0))
-        ax.text((x0 + x1) / 2, 3.72, b.label, ha="center", va="bottom", fontsize=8)
+        if len(S.bands) <= 16:                            # band, flip-angle and readout labels only while they fit
+            ax.text((x0 + x1) / 2, 3.72, b.label, ha="center", va="bottom", fontsize=8)
     for key, y in rows.items():
         for a, b, dashed in L.pieces(0, S.t_end):
             ax.plot([xu(a), xu(b)], [y, y], color="#8f8f8f", lw=0.8, ls=(0, (3, 3)) if dashed else "-")
@@ -134,11 +143,13 @@ def plot_diagram(S: Schedule, sim: Simulation | None = None, ax=None, compress: 
     # RF pulses and gradient lobes (gradient heights relative to the largest readout amplitude).
     grads = [e for e in S.events if e.type == "grad"]
     amp_ref = max([abs(g.amp) for g in grads if g.axis == "x"] + [1e-9])
+    n_rf = sum(e.type == "rf" for e in S.events)
     for e in S.events:
         if e.type == "rf":
             A = max(0.25, min(0.7, 0.4 + 0.3 * (abs(e.flip) - 90) / 90))
             _sinc(ax, xu(e.tc), rows["rf"], (xu(e.t1) - xu(e.t)) * 0.45, A, COL["rf"])
-            ax.text(xu(e.tc), rows["rf"] + A + 0.08, f"{e.flip:g}°", ha="center", va="bottom", fontsize=8)
+            if n_rf <= 40:
+                ax.text(xu(e.tc), rows["rf"] + A + 0.08, f"{e.flip:g}°", ha="center", va="bottom", fontsize=8)
         elif e.type == "grad":
             y0 = rows["gy"] if e.axis == "y" else rows["gx"]
             h = 0.45 * e.amp / amp_ref
@@ -162,7 +173,7 @@ def plot_diagram(S: Schedule, sim: Simulation | None = None, ax=None, compress: 
             for s in sim.samples:
                 if s["adc"] is a:
                     ax.plot(xu(s["t"]), ys(s["S"].real), "o", ms=3.5, color=_phase_color(np.angle(s["S"])), mec="#333", mew=0.5)
-            if a.d.get("label"):
+            if a.d.get("label") and len(S.adcs) <= 16:
                 ax.text(xu(a.tc) + 1, rows["sig"] + 0.72, loc(a.d["label"], lang), color=COL["sig"], fontsize=8)
     # Marks (dashed verticals) and arrows (horizontal spans below the signal row).
     for m in S.marks:
@@ -239,8 +250,8 @@ def plot_pixels(sim: Simulation, i: int, ax=None, phantom=None, mode: str = "den
     mx, my, mz = sim.Mx[i].reshape(N, N), sim.My[i].reshape(N, N), sim.Mz[i].reshape(N, N)
     ax.quiver(xx, yy, mx, my, color="#d62828", angles="xy", scale_units="xy", scale=m0max / 0.42, width=0.012)
     ax.quiver(xx, yy, np.zeros_like(mz), mz, color="#1d5fd1", angles="xy", scale_units="xy", scale=m0max / 0.42, width=0.008, alpha=0.8)
-    ax.set_xticks(X)
-    ax.set_yticks(X)
+    ax.set_xticks(axis_ticks(N))
+    ax.set_yticks(axis_ticks(N))
     ax.set_xlabel("x")
     ax.set_ylabel("y")
     ax.set_title(f"{N}×{N} pixels: M$_\\perp$ (red), M$_z$ (blue, drawn along y)", fontsize=9)
@@ -263,9 +274,8 @@ def plot_kspace(sim: Simulation, i: int | None = None, ax=None, sqrt_intensity: 
         ax.plot(sim.kx[i], sim.ky[i], "o", color=COL["cursor"], mec="w", ms=7)
         j0 = max(0, i - 2000)
         ax.plot(sim.kx[j0:i + 1], sim.ky[j0:i + 1], color=COL["cursor"], lw=0.8, alpha=0.6)
-    ticks = np.arange(-H, H + 1)
-    ax.set_xticks(ticks)
-    ax.set_yticks(ticks)
+    ax.set_xticks(axis_ticks(N))
+    ax.set_yticks(axis_ticks(N))
     ax.set_xlabel("k$_x$")
     ax.set_ylabel("k$_y$")
     ax.set_title("k-space: hue = phase, intensity = |S|", fontsize=9)

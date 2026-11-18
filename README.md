@@ -6,18 +6,24 @@ An N × N array of isochromats (one per pixel, with per-tissue proton density, T
 sequence in the rotating frame; the page shows the sequence diagram with a time cursor, the magnetization of every
 pixel, k-space filling in as the samples are acquired, and the image rebuilt one Fourier mode at a time.
 
-Two implementations share the same physics, the same tissue dictionary and the same sequence files:
+Three implementations share the same physics, the same tissue dictionary and the same sequence files:
 
 | | where | run |
 |---|---|---|
 | **Browser page** (no install) | [`MRI_sequencelab_web/`](MRI_sequencelab_web) (built page: `sequence_lab_v1.html`) | open the HTML file, or the hosted copy at **https://w40n5k1.github.io/MRIsim/** |
 | **Phantom editor** (browser) | `MRI_sequencelab_web/phantom_editor_v1.html` | linked from the page, or **https://w40n5k1.github.io/MRIsim/phantom_editor_v1.html** |
-| **Python package** | [`MRI_sequencelab_py/`](MRI_sequencelab_py) | `cd MRI_sequencelab_py && pip install -r requirements.txt && python -m mrisim` |
+| **Python package**, didactic | [`MRI_sequencelab_py/`](MRI_sequencelab_py) | `cd MRI_sequencelab_py && pip install -r requirements.txt && python -m mrisim` |
+| **Python package**, fast | [`MRI_sequencelab_py_fast/`](MRI_sequencelab_py_fast) | `cd MRI_sequencelab_py_fast && python -m mrisim_fast -N 127` |
 
 Sequences included: spin echo, fast spin echo (CPMG train, selectable k_y order), FLAIR (inversion + fast spin echo).
 Phantoms: filled/empty squares and letters, uniform, proton-density ramp, a schematic brain (gray and white matter,
 CSF, fat, bone, a lesion) and two painted 15 × 15 pictures (a cartoon face, a Mona Lisa). Both pages load sequence and phantom files (`.json`); phantoms
 painted in the editor (browser or Python) carry their own N, which the simulator adopts. Languages: Portuguese and English.
+
+Matrix sizes (N odd): 3 to 17 in the browser page; 3 to 35 in the didactic Python package, which advances every pixel step
+by step, keeps the whole history and rebuilds the image as a sum of Fourier modes; 3 to 255 in the fast package, which
+returns the same samples without the history and reconstructs with an FFT (N = 255 in a few seconds). The fast package
+uses the compiler and the data files of the didactic one, so keep the two folders side by side.
 
 ## Model
 
@@ -25,8 +31,8 @@ Rotating frame; instantaneous hard RF pulses (the whole rotation at the pulse ce
 the textbook signal formulas hold exactly; the width drawn on the diagram only animates the rotation);
 gradients act only through the phase 2π(Δk_x x + Δk_y y)/N, so the acquired samples are exactly the discrete Fourier
 transform of the pixel magnetizations at the sampling instants; exponential T1/T2 relaxation per pixel; ideal
-spoiler as an option. The reconstruction is the inverse DFT grouped in conjugate pairs, so each mode is a real cosine
-pattern that can be added to the image one at a time. Idealizations are deliberate (exact 180°, no slice profile,
+spoiler as an option. The reconstruction removes the phase of the echo, arg S(0), and is then the inverse DFT grouped in
+conjugate pairs, so each mode is a real cosine pattern that can be added to the image one at a time. Idealizations are deliberate (exact 180°, no slice profile,
 one isochromat per pixel): the point is to see the mechanism, not to match a scanner.
 
 ## Writing your own sequence

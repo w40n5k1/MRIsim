@@ -124,7 +124,7 @@ kbd { font-family: var(--mono); font-size: 0.8em; border: 1px solid var(--line);
     </div>
     <div class="grp row">
       <label><span id="lPhantom"></span> <select id="phantom"></select></label>
-      <label>N <select id="nsel"><option>3</option><option selected>5</option><option>7</option><option>9</option><option>11</option><option>13</option><option>15</option></select></label>
+      <label>N <select id="nsel"><option>3</option><option selected>5</option><option>7</option><option>9</option><option>11</option><option>13</option><option>15</option><option>17</option></select></label>
       <label><input type="checkbox" id="linear"> <span id="lLinear"></span></label>
       <label><input type="checkbox" id="compress" checked> <span id="lCompress"></span></label>
       <button id="lang">EN</button>
@@ -240,7 +240,7 @@ const I18N = {
         'Cor: matiz = <span class="m">arg S(k)</span> (0 = vermelho, π/2 = verde-amarelo, π = ciano, −π/2 = azul-violeta), intensidade = <span class="m">√(|S(k)|/ΣM<sub>0</sub>)</span> (ou linear), a mesma codificação da bola da legenda. O marcador é k(t); o salto tracejado é o k → −k do 180°.'
       ]],
       ['Imagem real (Fourier reversa)', [
-        '<span class="m">ρ(r) = (1/N²) Σ<sub>k</sub> S(k) e<sup>+2πi k·r/N</sup></span>. Agrupando cada par conjugado {k, −k}: <span class="m">Z<sub>k</sub> = S(k) + S(−k)<sup>*</sup></span>, <span class="m">A<sub>k</sub> = |Z<sub>k</sub>|/N²</span>, <span class="m">φ<sub>k</sub> = arg Z<sub>k</sub></span>, e a contribuição real do par é <span class="m">A<sub>k</sub> cos(2π k·r/N + φ<sub>k</sub>)</span>; o termo DC é <span class="m">|S(0)|/N² · cos(arg S(0))</span>. Os (N²+1)/2 modos entram em ordem crescente de |k|; a soma é real por construção e a imagem mostra o seu módulo, como o scanner (tecidos com M<sub>z</sub> &lt; 0 no 90° aparecem claros). Branco = máximo da reconstrução completa.'
+        '<span class="m">ρ(r) = (1/N²) Σ<sub>k</sub> S(k) e<sup>+2πi k·r/N</sup></span>. O objeto é real a menos de uma fase global, a fase do eco, <span class="m">φ<sub>0</sub> = arg S(0)</span> (o eco se forma em +x após um 90° em torno de y, em +y após um 90° em torno de x): ela é removida primeiro, <span class="m">S(k) → S(k) e<sup>−iφ<sub>0</sub></sup></span>. Agrupando então cada par conjugado {k, −k}: <span class="m">Z<sub>k</sub> = S(k) + S(−k)<sup>*</sup></span>, <span class="m">A<sub>k</sub> = |Z<sub>k</sub>|/N²</span>, <span class="m">φ<sub>k</sub> = arg Z<sub>k</sub></span>, e a contribuição real do par é <span class="m">A<sub>k</sub> cos(2π k·r/N + φ<sub>k</sub>)</span>; o termo DC é <span class="m">|S(0)|/N²</span>. Os (N²+1)/2 modos entram em ordem crescente de |k|; a soma é real por construção e a imagem mostra o seu módulo, como o scanner (tecidos com M<sub>z</sub> &lt; 0 no 90° aparecem claros). Branco = máximo da reconstrução completa.'
       ]],
       ['Modo / Resíduo', [
         'Modo: o padrão normalizado <span class="m">cos(2π k·r/N + φ<sub>k</sub>)</span> (cinza médio = 0); o quadradinho "×" é |Z<sub>k</sub>| na codificação do espaço k (sempre fase 0).',
@@ -253,7 +253,7 @@ const I18N = {
       'Modelo (comum a todas as sequências): referencial girante em ω₀, Δφ = 2π(Δkₓ·x + Δk_y·y)/N com x, y ∈ {−(N−1)/2,…,(N−1)/2} (N ímpar, seletor no painel), m → m·e^{−iΔφ}: as amostras são a DFT direta das magnetizações dos pixels. Pulsos instantâneos: toda a rotação é aplicada no centro do pulso e a relaxação nunca é interrompida, de modo que as fórmulas de livro-texto valem exatamente (spin echo: S ∝ M₀[1 − 2e^{−(T_R−T_E/2)/T1} + e^{−T_R/T1}]e^{−T_E/T2} a partir da segunda repetição); a largura desenhada é só a animação dessa rotação. Relaxação: M⊥ ∝ e^{−t/T2}, M_z → M₀ + (M_z − M₀)e^{−t/T1}; cursores em ∞ desligam. Sinal S = Σ(Mₓ + iM_y) sobre os N² pixels (não normalizado). Até N = 9 cada pixel mostra a esfera de Bloch; acima, só a cor da célula e, até N = 15, a seta de M⊥. A seleção de fatia é tomada como já feita.',
       'Objetos são mapas de tecidos: cada pixel tem um rótulo (subst. cinzenta, subst. branca, líquor, gordura, osso cortical, ar, lesão) que fixa sua densidade de prótons, T1 e T2 (dicionário tissues.json, valores aproximados a 3 T), mais um fator opcional de densidade (a rampa). Os objetos "cheio/vazio" são subst. cinzenta sobre ar: o caso mais simples, insensível a TE e TR, em que a intensidade do sinal se lê diretamente da soma das setas transversais dos pixels cheios. Os objetos "SC sobre SB" têm fundo com sinal, e aí o contraste entre figura e fundo depende da sequência (TE, TR, TI). A caixa "T1/T2 globais" substitui os valores dos tecidos pelos cursores, para experimentos como T2 = ∞.',
       'Espaço k: cada célula é um intervalo de amostragem (dwell); a amostra fica no centro e a varredura de leitura cobre as células inteiras (−N/2 a +N/2). A cor é a fase de S e a intensidade |S|, na mesma codificação da bola da legenda. Em pulsos de refocalização ideais k → −k.',
-      'Fourier reversa: imagem(r) = (1/N²) Σ_k S(k) e^{+2πi k·r/N}; cada par conjugado {k, −k} dá uma onda real A cos(2π k·r/N + φ); (N²+1)/2 modos (DC + (N²−1)/2 pares) em ordem crescente de |k|. Resíduo = imagem/c − imagem ideal (|M⊥| de cada pixel no eco central), com c por mínimos quadrados: mede o filtro do espaço k, não o contraste.',
+      'Fourier reversa: imagem(r) = (1/N²) Σ_k S(k) e^{+2πi k·r/N}, depois de removida a fase do eco, arg S(0); cada par conjugado {k, −k} dá uma onda real A cos(2π k·r/N + φ); (N²+1)/2 modos (DC + (N²−1)/2 pares) em ordem crescente de |k|. Resíduo = imagem/c − imagem ideal (|M⊥| de cada pixel no eco central), com c por mínimos quadrados: mede o filtro do espaço k, não o contraste.',
       'Sequências são arquivos JSON (formato didactic-mri-sequence/1): parâmetros, constantes, variáveis derivadas e uma lista de eventos por repetição (rf, grad, adc, spoil, repeat, band, arrow, mark), com tempos e áreas como expressões. "Copiar JSON da sequência" exporta a sequência atual; "carregar sequência" lê uma do disco. As expressões são avaliadas como JavaScript: carregue só arquivos de origem conhecida.',
       'Teclado: espaço = tocar/pausar, ← → = evento anterior/seguinte, Home = início.'
     ]
@@ -296,7 +296,7 @@ const I18N = {
         'Color: hue = <span class="m">arg S(k)</span> (0 = red, π/2 = yellow-green, π = cyan, −π/2 = blue-violet), intensity = <span class="m">√(|S(k)|/ΣM<sub>0</sub>)</span> (or linear), the same encoding as the legend ball. The marker is k(t); the dashed jump is the 180°\'s k → −k.'
       ]],
       ['Real image (inverse Fourier)', [
-        '<span class="m">ρ(r) = (1/N²) Σ<sub>k</sub> S(k) e<sup>+2πi k·r/N</sup></span>. Grouping each conjugate pair {k, −k}: <span class="m">Z<sub>k</sub> = S(k) + S(−k)<sup>*</sup></span>, <span class="m">A<sub>k</sub> = |Z<sub>k</sub>|/N²</span>, <span class="m">φ<sub>k</sub> = arg Z<sub>k</sub></span>, and the pair\'s real contribution is <span class="m">A<sub>k</sub> cos(2π k·r/N + φ<sub>k</sub>)</span>; the DC term is <span class="m">|S(0)|/N² · cos(arg S(0))</span>. The (N²+1)/2 modes enter in increasing |k|; the sum is real by construction and the image shows its magnitude, as the scanner does (tissues with M<sub>z</sub> &lt; 0 at the 90° appear bright). White = maximum of the full reconstruction.'
+        '<span class="m">ρ(r) = (1/N²) Σ<sub>k</sub> S(k) e<sup>+2πi k·r/N</sup></span>. The object is real up to one global phase, the phase of the echo, <span class="m">φ<sub>0</sub> = arg S(0)</span> (the echo forms along +x after a 90° about y, along +y after a 90° about x): it is removed first, <span class="m">S(k) → S(k) e<sup>−iφ<sub>0</sub></sup></span>. Then, grouping each conjugate pair {k, −k}: <span class="m">Z<sub>k</sub> = S(k) + S(−k)<sup>*</sup></span>, <span class="m">A<sub>k</sub> = |Z<sub>k</sub>|/N²</span>, <span class="m">φ<sub>k</sub> = arg Z<sub>k</sub></span>, and the pair\'s real contribution is <span class="m">A<sub>k</sub> cos(2π k·r/N + φ<sub>k</sub>)</span>; the DC term is <span class="m">|S(0)|/N²</span>. The (N²+1)/2 modes enter in increasing |k|; the sum is real by construction and the image shows its magnitude, as the scanner does (tissues with M<sub>z</sub> &lt; 0 at the 90° appear bright). White = maximum of the full reconstruction.'
       ]],
       ['Mode / Residual', [
         'Mode: the normalized pattern <span class="m">cos(2π k·r/N + φ<sub>k</sub>)</span> (mid-gray = 0); the small "×" square is |Z<sub>k</sub>| in the k-space encoding (always phase 0).',
@@ -309,7 +309,7 @@ const I18N = {
       'Model (common to all sequences): rotating frame at ω₀, Δφ = 2π(Δkₓ·x + Δk_y·y)/N with x, y ∈ {−(N−1)/2,…,(N−1)/2} (N odd, selector in the panel), m → m·e^{−iΔφ}: the samples are the forward DFT of the pixel magnetizations. Instantaneous hard pulses: the whole rotation is applied at the pulse center and relaxation is never interrupted, so the textbook formulas hold exactly (spin echo: S ∝ M₀[1 − 2e^{−(T_R−T_E/2)/T1} + e^{−T_R/T1}]e^{−T_E/T2} from the second repetition on); the drawn width is only the animation of that rotation. Relaxation: M⊥ ∝ e^{−t/T2}, M_z → M₀ + (M_z − M₀)e^{−t/T1}; sliders at ∞ switch them off. Signal S = Σ(Mₓ + iM_y) over the N² pixels (unnormalized). Up to N = 9 each pixel shows its Bloch sphere; above that only the cell color and, up to N = 15, the M⊥ arrow. Slice selection is taken as already done.',
       'Phantoms are tissue maps: each pixel has a label (gray matter, white matter, CSF, fat, cortical bone, air, lesion) that fixes its proton density, T1 and T2 (dictionary tissues.json, approximate 3 T values), plus an optional density factor (the ramp). The "filled/empty" phantoms are gray matter on air: the simplest case, insensitive to TE and TR, where the signal intensity can be read directly as the sum of the transverse arrows of the filled pixels. The "GM on WM" phantoms have a background with signal, and then figure/background contrast depends on the sequence (TE, TR, TI). The "global T1/T2" box replaces the tissue values by the sliders, for experiments such as T2 = ∞.',
       'k-space: each cell is one sampling (dwell) interval; the sample sits at its center and the readout sweep covers whole cells (−N/2 to +N/2). Color is the phase of S and intensity |S|, with the same encoding as the legend ball. At ideal refocusing pulses k → −k.',
-      'Inverse Fourier: image(r) = (1/N²) Σ_k S(k) e^{+2πi k·r/N}; each conjugate pair {k, −k} gives one real wave A cos(2π k·r/N + φ); (N²+1)/2 modes (DC + (N²−1)/2 pairs) in increasing |k|. Residual = image/c − ideal image (each pixel\'s |M⊥| at the central echo), with c by least squares: it measures the k-space filter, not the contrast.',
+      'Inverse Fourier: image(r) = (1/N²) Σ_k S(k) e^{+2πi k·r/N}, after the phase of the echo, arg S(0), is removed; each conjugate pair {k, −k} gives one real wave A cos(2π k·r/N + φ); (N²+1)/2 modes (DC + (N²−1)/2 pairs) in increasing |k|. Residual = image/c − ideal image (each pixel\'s |M⊥| at the central echo), with c by least squares: it measures the k-space filter, not the contrast.',
       'Sequences are JSON files (format didactic-mri-sequence/1): parameters, constants, derived variables and a list of events per repetition (rf, grad, adc, spoil, repeat, band, arrow, mark), with times and areas as expressions. "Copy sequence JSON" exports the current sequence; "load sequence" reads one from disk. Expressions are evaluated as JavaScript: load only files from a known source.',
       'Keyboard: space = play/pause, ← → = previous/next event, Home = start.'
     ]
@@ -336,7 +336,7 @@ function selectPhantom(id) {
   if (g) { const n = g.N || g.labels.length; if ([...$('nsel').options].some(o => +o.value === n) && st.N !== n) { st.N = n; $('nsel').value = String(n); fPause(); F.step = -1; F.phase = 0; F.data = null; st.u = 0; } }
 }
 function M0() { return PH().M0; }
-const NSPHERE = 9, NARROW = 15;   // Bloch spheres drawn up to N = NSPHERE; transverse arrows only up to NARROW
+const NSPHERE = 9, NARROW = 17;   // Bloch spheres drawn up to N = NSPHERE, transverse arrows up to NARROW (the largest N offered)
 function nModes() { return (st.N * st.N + 1) / 2; }
 function mk(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/([_^])\{([^}]*)\}/g, (m, c, t) => c === '_' ? `<sub>${t}</sub>` : `<sup>${t}</sup>`).replace(/([_^])([A-Za-z0-9α-ωΑ-Ω−+\-]{1})/g, (m, c, t) => c === '_' ? `<sub>${t}</sub>` : `<sup>${t}</sup>`); }
 function loc(v) { return (v && typeof v === 'object') ? (v[st.lang] || v.pt || v.en || '') : (v == null ? '' : String(v)); }
@@ -661,7 +661,13 @@ function acquiredUpTo(i) { const out = []; for (const s of st.sim.samples) if (s
 function fourierPrep(i) {
   const acq = acquiredUpTo(i);
   if (F.data && F.sim === st.sim && F.nAcq === acq.length) return F.data;
-  const N = st.N, Hh = (N - 1) / 2, N2 = N * N, S = new Map(); for (const s of acq) S.set(s.kx + ',' + s.ky, s);
+  // Phase of the echo, phi0 = arg S(0): the object is real only up to this global phase (the echo forms along +x after a 90 about y,
+  // along +y after a 90 about x), so it is removed from every sample before k and -k are paired.  It comes from the first k = 0 sample
+  // acquired so far, or from the first one of the whole acquisition while the center of k-space has not been reached.
+  const isCenter = s => s.kx === 0 && s.ky === 0, c00 = acq.find(isCenter) || st.sim.samples.find(isCenter);
+  const phi0 = c00 && Math.hypot(c00.re, c00.im) > 1e-12 * st.sim.Smax ? Math.atan2(c00.im, c00.re) : 0, c0 = Math.cos(phi0), s0 = Math.sin(phi0);
+  const N = st.N, Hh = (N - 1) / 2, N2 = N * N, S = new Map();
+  for (const s of acq) S.set(s.kx + ',' + s.ky, { re: s.re * c0 + s.im * s0, im: s.im * c0 - s.re * s0 });     // S exp(-i phi0)
   const get = (kx, ky) => S.get(kx + ',' + ky) || { re: 0, im: 0 };
   const reps = []; for (let kx = -Hh; kx <= Hh; kx++) for (let ky = -Hh; ky <= Hh; ky++) if (kx > 0 || (kx === 0 && ky > 0)) reps.push([kx, ky]);
   reps.sort((a, b) => (a[0] * a[0] + a[1] * a[1]) - (b[0] * b[0] + b[1] * b[1]) || Math.atan2(a[1], a[0]) - Math.atan2(b[1], b[0]));
@@ -683,7 +689,7 @@ function fourierPrep(i) {
   const c = den > 0 && num !== 0 ? num / den : 1;
   const resid = new Float64Array(N2); let rmax = 0;
   for (let p = 0; p < N2; p++) { resid[p] = (mag[p] / c - ref[p]) / refmax; rmax = Math.max(rmax, Math.abs(resid[p])); }
-  F.data = { modes, full, vmax, c, resid, rmax, refmax, nAcq: acq.length, S }; F.sim = st.sim; F.nAcq = acq.length;
+  F.data = { modes, full, vmax, c, resid, rmax, refmax, nAcq: acq.length, phi0 }; F.sim = st.sim; F.nAcq = acq.length;
   return F.data;
 }
 function fResetIfStale(i) { const n = acquiredUpTo(i).length; if (F.sim !== st.sim || F.nAcq !== n) { fPause(); F.step = -1; F.phase = 0; F.data = null; } }

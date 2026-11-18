@@ -9,9 +9,11 @@
 Layout of the window
 --------------------
 Left column (when selectors are on): the sequence (every file in the sequences folder), the phantom (every
-file in the phantoms folder), the matrix size N, and the parameters declared by the chosen sequence file
-(sliders, option lists and checkboxes).  Any change recompiles and resimulates; sliders apply when the mouse
-button is released, since they fire continuously while dragged.
+file in the phantoms folder), the matrix size N (odd, 3 to 35), and the parameters declared by the chosen
+sequence file (sliders, option lists and checkboxes).  Any change recompiles and resimulates; sliders apply when
+the mouse button is released, since they fire continuously while dragged.  The whole history of every pixel is
+kept for the time slider, about 40 MB at N = 15 and 0.6 GB at N = 35 for a spin echo, so large N is slow to
+rebuild; for images without the history use the mrisim_fast package.
 Top: the sequence diagram with a time cursor.  Bottom row: the pixel array (cells colored by tissue, proton
 density or transverse phase; arrows for M_perp and Mz), k-space filling in as the samples are acquired, the
 partial reconstruction |sum of the first n modes|, the mode being added (green frame; its two conjugate cells are
@@ -22,8 +24,8 @@ gaps pass quickly); a mode slider with a Fourier play button; cell-color mode; r
 Implementation notes
 --------------------
 The static parts (the diagram, the panel frames) are drawn once per model; the time slider only moves the
-cursor, updates the quiver arrows and the two color images.  The three selector radios are permanent; everything
-else is rebuilt by _rebuild() after a model change, which removes the dynamic axes and recreates them.  Widgets
+cursor, updates the quiver arrows and the two color images.  The selectors (two radios and the N slider) are
+permanent; everything else is rebuilt by _rebuild() after a model change, which removes the dynamic axes and recreates them.  Widgets
 are kept in self.widgets so that matplotlib does not garbage-collect their callbacks.
 """
 from __future__ import annotations
@@ -37,12 +39,12 @@ from matplotlib.widgets import Button, CheckButtons, RadioButtons, Slider
 
 from .engine import Simulation, compile_sequence, load_json, loc, param_defaults, simulate
 from .phantoms import load_tissues, render_phantom
-from .plot import COL, Layout, kspace_rgb, plot_diagram
+from .plot import COL, Layout, axis_ticks, kspace_rgb, plot_diagram
 from .recon import reconstruct
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent      # folder holding sequences/, phantoms/, tissues.json
 ALIEN = "#39ff14"                                          # frame color of the current-mode panel
-NS = (3, 5, 7, 9, 11, 13, 15)                              # matrix sizes offered
+N_MIN, N_MAX = 3, 35                                       # matrix sizes offered (odd): the stored history grows roughly as N^4
 # Didactic order of the built-in sequences and phantoms in the selectors; other files follow alphabetically.
 ORDER = ["se", "fse", "flair", "squareAir", "letterFAir", "uniform", "square", "letterF", "ramp", "brain", "face", "monalisa"]
 
@@ -110,7 +112,7 @@ class Lab:
         if self.ph_id not in phantoms:
             self.ph_id = next(iter(phantoms))
         grid = phantoms[self.ph_id].get("grid") if fixed is None else None
-        if grid and int(grid.get("N", len(grid["labels"]))) in NS:
+        if grid and N_MIN <= int(grid.get("N", len(grid["labels"]))) <= N_MAX:
             self.N = int(grid.get("N", len(grid["labels"])))          # a painted phantom brings its own N
         self.cell_mode = "tissue"
         self.gain = 1.0
@@ -143,7 +145,7 @@ class Lab:
         self.sim = simulate(S, self.ph.M0, self.ph.T1, self.ph.T2)
 
     def _rebuild(self):
-        """Resimulate and rebuild everything except the three selector radios."""
+        """Resimulate and rebuild everything except the permanent selectors."""
         self.playing = self.fplaying = False
         self._simulate()
         sim, N = self.sim, self.sim.S.N
@@ -175,7 +177,7 @@ class Lab:
     # ------------------------------------------------------------------ left column
 
     def _build_selectors(self):
-        """The permanent radios: sequence, phantom and N."""
+        """The permanent selectors: sequence and phantom radios, and the N slider."""
         fig, T, lang = self.fig, self.T, self.lang
         x0, w = 0.012, 0.15
         y = 0.95
@@ -205,12 +207,13 @@ class Lab:
 
         fig.text(x0, y, T["n"], fontsize=9, fontweight="bold")
         y -= 0.012
-        h = 0.026 * len(NS)
-        r = RadioButtons(fig.add_axes([x0, y - h, w * 0.5, h], frameon=False), [f"{n} × {n}" for n in NS],
-                         active=NS.index(self.N))
-        _small(r)
-        r.on_clicked(self._on_n)
-        self.widgets["n"] = r
+        h = 0.02
+        s = Slider(fig.add_axes([x0 + 0.035, y - h, w - 0.045, h]), "N", N_MIN, N_MAX, valinit=self.N, valstep=2,
+                   valfmt="%d")
+        s.label.set_fontsize(8)
+        s.valtext.set_fontsize(8)
+        s.on_changed(self._on_n)
+        self.widgets["n"] = s
         y -= h + 0.03
         self.y_params = y                         # where the parameter widgets start
 
@@ -283,8 +286,8 @@ class Lab:
                                       scale=self.m0max / 0.42, width=0.012)
         self.q_z = self.axp.quiver(xx, yy, z, z, color="#1d5fd1", angles="xy", scale_units="xy",
                                    scale=self.m0max / 0.42, width=0.008, alpha=0.8)
-        self.axp.set_xticks(X)
-        self.axp.set_yticks(X)
+        self.axp.set_xticks(axis_ticks(N))
+        self.axp.set_yticks(axis_ticks(N))
         self.axp.set_xlabel("x")
         self.axp.set_ylabel("y")
         self.axp.set_title(f"{N}×{N} pixels: M$_\\perp$ (red), M$_z$ (blue, along y)", fontsize=9)
@@ -295,8 +298,8 @@ class Lab:
         self.k_dot, = self.axk.plot([], [], "o", color=COL["cursor"], mec="w", ms=7)
         self.k_boxes = [self.axk.add_patch(Rectangle((0, 0), 1, 1, fill=False, ec=ALIEN, lw=2.2, visible=False))
                         for _ in range(2)]
-        self.axk.set_xticks(X)
-        self.axk.set_yticks(X)
+        self.axk.set_xticks(axis_ticks(N))
+        self.axk.set_yticks(axis_ticks(N))
         self.axk.set_xlabel("k$_x$")
         self.axk.set_ylabel("k$_y$")
         self.axk.set_title("k-space: hue = phase, intensity = |S|", fontsize=9)
@@ -388,24 +391,25 @@ class Lab:
         self._rebuild()
 
     def _adopt_grid_n(self):
-        """If the chosen phantom is a painted grid, select its N (quietly, so the radio does not rebuild twice)."""
+        """If the chosen phantom is a painted grid, select its N (quietly, so the slider does not rebuild twice)."""
         grid = self.phs[self.ph_id].get("grid")
         if not grid:
             return
         n = int(grid.get("N", len(grid["labels"])))
-        if n in NS and n != self.N:
+        if N_MIN <= n <= N_MAX and n != self.N:
             self.N = n
             if "n" in self.widgets:
                 self._quiet = True
-                self.widgets["n"].set_active(NS.index(n))
+                self.widgets["n"].set_val(n)
                 self._quiet = False
 
-    def _on_n(self, label):
-        """Matrix-size radio."""
-        if self._quiet:
+    def _on_n(self, value):
+        """Matrix-size slider: like the parameter sliders, it applies when the mouse button is released."""
+        n = int(round(value))
+        if self._quiet or n == self.N:
             return
-        self.N = int(label.split()[0])
-        self._rebuild()
+        self.N = n
+        self._pending = True
 
     def _set_param(self, pid, value, deferred=False):
         """Store a parameter value; rebuild now, or (sliders) at the next mouse release."""

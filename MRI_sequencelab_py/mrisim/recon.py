@@ -3,13 +3,19 @@
 
 The samples are the forward DFT of the pixel magnetizations, so the image is the inverse DFT
     image(r) = (1/N^2) sum_k S(k) exp(+2 pi i k.r / N).
-Because the object is real, S(-k) = conj(S(k)) in the ideal case, and the terms k and -k combine into one real
-cosine pattern.  Writing Z = S(k) + conj(S(-k)) = |Z| exp(i phi), the pair contributes
+The object is real up to one global phase, the phase of the echo: the transverse magnetization of every pixel
+points along the same axis when the echo forms, +x after a 90 degree pulse about y, +y after one about x.  That
+phase is the phase of the k = 0 sample, phi0 = arg S(0), and the reconstruction removes it first: every sample
+is multiplied by exp(-i phi0).  After that S(-k) = conj(S(k)) in the ideal case, and the terms k and -k combine
+into one real cosine pattern.  Writing Z = S(k) + conj(S(-k)) = |Z| exp(i phi), the pair contributes
     (|Z| / N^2) cos(2 pi k.r / N + phi)
-to the image; the k = 0 term contributes S(0)/N^2 (a constant; its phase is the global signal phase).  The modes
-are listed in increasing |k| so that adding them one by one shows the image building up from coarse to fine.
-Any deviation of the pair sum from a real cosine (for instance from relaxation between the two acquisitions)
-is still represented exactly, since |Z| and phi are taken from the actual samples.
+to the image; the k = 0 term contributes the constant |S(0)| / N^2.  The modes are listed in increasing |k| so
+that adding them one by one shows the image building up from coarse to fine.
+
+The sum of the modes is the real part of the inverse DFT of the phase-corrected samples.  Whatever breaks the
+symmetry S(-k) = conj(S(k)) (the decay between the two acquisitions of a pair, a k line acquired in another
+magnetization state) changes |Z| and phi, which are taken from the actual samples; its imaginary part is not
+shown.
 
 The sequence's *ideal* image is the magnitude of the transverse magnetization of each pixel at the instant the
 k = 0 sample is taken: that is the contrast the sequence encodes, free of the Fourier truncation and of any
@@ -53,6 +59,7 @@ class Recon:
     N            matrix size
     modes        the Mode list in increasing |k| (the constant first), (N^2 + 1)/2 modes in all
     image        the real image, sum of all mode contributions, per pixel
+    phase0       the phase of the echo that was removed from the samples (radians): arg S(0)
     ideal        |M_perp| of every pixel at the k = 0 sample (the sequence's ideal contrast image)
     c            least-squares scale factor between |image| and ideal
     residual     (|image| / c - ideal) / max(ideal), per pixel
@@ -61,6 +68,7 @@ class Recon:
     N: int
     modes: list
     image: np.ndarray
+    phase0: float
     ideal: np.ndarray
     c: float
     residual: np.ndarray
@@ -84,11 +92,19 @@ def reconstruct(sim: Simulation, samples=None) -> Recon:
 
     samples   a subset of sim.samples (default: all of them), e.g. those acquired up to a given time; a k cell
               without a sample counts as zero.
+
+    The phase of the echo is taken from the first k = 0 sample of the subset; if the subset has none (the center
+    of k-space not acquired yet), from the first k = 0 sample of the whole acquisition.
     """
     S = sim.S
     N, NPIX, H = S.N, S.npix, (S.N - 1) // 2
     samples = sim.samples if samples is None else samples
-    table = {(s["kx"], s["ky"]): s["S"] for s in samples}
+    is_center = lambda s: s["kx"] == 0 and s["ky"] == 0
+    s00 = next((s for s in samples if is_center(s)), None)
+    ref = s00 if s00 is not None else next((s for s in sim.samples if is_center(s)), None)
+    phase0 = float(np.angle(ref["S"])) if ref is not None and abs(ref["S"]) > 1e-12 * max(sim.Smax, 1e-300) else 0.0
+    unwind = np.exp(-1j * phase0)                 # removes the phase of the echo
+    table = {(s["kx"], s["ky"]): s["S"] * unwind for s in samples}
     get = lambda kx, ky: table.get((kx, ky), 0j)
     X, Y = pixel_xy(N)
     # One representative per conjugate pair, ordered by |k| then angle.
@@ -104,11 +120,10 @@ def reconstruct(sim: Simulation, samples=None) -> Recon:
         m.contrib = m.amp * m.pattern
     image = sum(m.contrib for m in modes)
     # Ideal contrast image and residual.
-    s00 = next((s for s in samples if s["kx"] == 0 and s["ky"] == 0), None)
     ideal = np.hypot(sim.Mx[s00["idx"]], sim.My[s00["idx"]]) if s00 else np.zeros(NPIX)
     mag = np.abs(image)
     den = float((ideal ** 2).sum())
     c = float((mag * ideal).sum() / den) if den > 0 and (mag * ideal).sum() != 0 else 1.0
     refmax = max(1e-9, float(ideal.max()))
     residual = (mag / c - ideal) / refmax
-    return Recon(N, modes, image, ideal, c, residual, len(samples))
+    return Recon(N, modes, image, phase0, ideal, c, residual, len(samples))

@@ -41,7 +41,7 @@ tissues = load_tissues("tissues.json")
 ph  = load_phantom("phantoms/brain.json", N=9, tissues=tissues)         # ph.M0, ph.T1, ph.T2, ph.label per pixel
 S   = compile_sequence(load_json("sequences/flair.json"), {"TI": 2750}, lang="pt", N=9)
 sim = simulate(S, ph.M0, ph.T1, ph.T2)      # sim.times, sim.Mx/My/Mz (Nt x N^2), sim.signal, sim.kx/ky, sim.samples
-rec = reconstruct(sim)                      # rec.modes (DC + conjugate pairs), rec.image, rec.ideal, rec.residual
+rec = reconstruct(sim)                      # rec.modes (DC + conjugate pairs), rec.image, rec.ideal, rec.residual, rec.phase0
 fig, rec = overview(sim, ph, t=2790)        # static: diagram + panels at a cursor time
 view(sim, ph)                               # interactive viewer for this one simulation
 lab(N=9, lang="en")                         # viewer with selectors; lab(sequences_dir, phantoms_dir, tissues_path, ...)
@@ -67,9 +67,18 @@ rotation at the pulse center, relaxation never interrupted, so the textbook form
 only animates the rotation); exponential relaxation per pixel; signal S = sum of
 (Mx + i My). The k label follows the magnetization created by the latest excitation (reset to 0 at its center,
 k -> -k at a refocusing pulse); whatever transverse magnetization survives from earlier shots keeps its own phase and
-enters the samples as a ghost, which is what the spoiler removes. Idle gaps (TR tails, the TI wait) use a coarse time grid and are drawn compressed. Reconstruction:
-image(r) = (1/N^2) sum_k S(k) exp(+2 pi i k.r/N), grouped in conjugate pairs; the residual compares |image| with
-the sequence's ideal contrast image (each pixel's |M_perp| at the k = 0 sample).
+enters the samples as a ghost, which is what the spoiler removes. Idle gaps (TR tails, the TI wait) use a coarse
+time grid and are drawn compressed. Reconstruction: the phase of the echo, arg S(0), is removed from the samples
+(the echo forms along +x after a 90 degree pulse about y, along +y after one about x; the object is real only up
+to that phase); then image(r) = (1/N^2) sum_k S(k) exp(+2 pi i k.r/N), grouped in conjugate pairs, each pair one
+real cosine. The residual compares |image| with the sequence's ideal contrast image (each pixel's |M_perp| at the
+k = 0 sample).
+
+Matrix sizes. N is odd. The viewer and the editor offer 3 to 35 (the browser page, 3 to 17). The engine has no
+limit of its own, but it stores the magnetization of every pixel at every instant, which is what the viewer
+shows: about 40 MB at N = 15, 0.6 GB at N = 35 and 3.4 GB at N = 63 for a spin echo. For images at larger N,
+without the history, use the package `mrisim_fast` in the folder `MRI_sequencelab_py_fast`, next to this one: it
+runs the same files, gives the same samples and goes to N = 255.
 
 ## Sequence file format (didactic-mri-sequence/1)
 
@@ -116,7 +125,7 @@ rendered at any odd N by nearest-neighbor resampling of the pixel centers.
 
 The editor (`python -m mrisim.phantom_editor`) shows the dictionary's tissues as colored buttons; left-drag paints the
 selected tissue, right-drag paints air; the tools (fill, erode, grow, fill holes, convex hull, convex core, open, close,
-smooth, negative, undo) act on the selected tissue only. N is odd, 3 to 15.
+smooth, negative, undo) act on the selected tissue only. N is odd, 3 to 35 (the browser editor stops at 17).
 
 ## Extending
 

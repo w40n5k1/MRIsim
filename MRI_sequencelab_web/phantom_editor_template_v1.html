@@ -61,7 +61,7 @@ textarea { width: 100%; height: 7em; font-family: var(--mono); font-size: 0.8rem
       <button id="save"></button>
       <button id="copy"></button>
       <button id="load"></button><input type="file" id="file" accept=".json,application/json">
-      <label>N <select id="nsel"><option>3</option><option>5</option><option>7</option><option selected>9</option><option>11</option><option>13</option><option>15</option></select></label>
+      <label>N <select id="nsel"><option>3</option><option>5</option><option>7</option><option selected>9</option><option>11</option><option>13</option><option>15</option><option>17</option></select></label>
       <label><span id="lName"></span> <input id="pname" type="text" size="14" value="fantoma"></label>
       <a id="back" class="btnlink" href="index.html"></a>
       <button id="lang">EN</button>
@@ -90,7 +90,7 @@ textarea { width: 100%; height: 7em; font-family: var(--mono); font-size: 0.8rem
 (function () {
 'use strict';
 const E = window.SeqEngine, $ = id => document.getElementById(id);
-const NS = [3, 5, 7, 9, 11, 13, 15];
+const NS = [3, 5, 7, 9, 11, 13, 15, 17];
 const I18N = {
   pt: { title: 'Editor de fantomas', lead: 'Pinte um fantoma N×N com os tecidos do dicionário e salve-o como arquivo .json para o simulador. Botão esquerdo pinta o tecido selecionado, direito pinta ar.',
         save: 'salvar (.json)', copy: 'copiar JSON', load: 'carregar (.json)', name: 'nome', back: 'simulador ↗', fillOff: 'preencher: não', fillOn: 'preencher: sim',
@@ -309,7 +309,7 @@ $('file').addEventListener('change', e => {
       const def = JSON.parse(rd.result);
       if (!def || typeof def !== 'object' || (!Array.isArray(def.shapes) && !def.grid)) throw new Error('not a phantom file');
       const N = def.grid ? (def.grid.N || def.grid.labels.length) : st.N;
-      if (!NS.includes(N)) throw new Error('N = ' + N);
+      if (!NS.includes(N)) throw new Error('N = ' + N + ' (' + NS[0] + '…' + NS[NS.length - 1] + ')');
       const ph = E.renderPhantom(def, N, TISSUES);          // shapes rendered at the current N; a grid imposes its own
       push(); st.N = N; $('nsel').value = String(N);
       st.grid = Array.from({ length: N }, (_, i) => Array.from({ length: N }, (_, j) => KEYS.indexOf(ph.label[i * N + j])));

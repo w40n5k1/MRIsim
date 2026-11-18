@@ -3,8 +3,9 @@
 
     python -m mrisim.phantom_editor [phantom.json] [--tissues tissues.json] [-N 9] [--lang pt|en]
 
-The grid is N x N with N odd, from 3 to 15 (the sizes the simulator accepts).  Every pixel holds one tissue key
-of the tissue dictionary (tissues.json); the background is air.  The window shows:
+The grid is N x N with N odd, from 3 to 35 (the sizes the Python viewer accepts; the browser page stops at
+17).  Every pixel holds one tissue key of the tissue dictionary (tissues.json); the background is air.  The
+window shows:
   * top row: the tissues of the dictionary as colored buttons; click one to select it (the selected button is
     framed).  Save and Load are at the left of the same row.
   * the grid, drawn in the tissue colors.  Left-drag paints the selected tissue, right-drag paints air.
@@ -24,7 +25,7 @@ of the tissue dictionary (tissues.json); the background is air.  The window show
       Smooth          3 x 3 majority filter of the selected tissue (gains from air, losses to air)
       Negative        swaps the selected tissue and air; other tissues are untouched
       Undo            reverts the last change
-    and a text box with N: submitting a new odd N from 3 to 15 starts a blank grid of that size (Undo brings
+    and a text box with N: submitting a new odd N from 3 to 35 starts a blank grid of that size (Undo brings
     the previous drawing back).
 
 Files.  A phantom is saved as a phantom file (format didactic-mri-phantom/1) carrying a "grid" block,
@@ -56,7 +57,7 @@ from .engine import loc
 from .phantoms import load_tissues, render_phantom
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-N_MIN, N_MAX = 3, 15
+N_MIN, N_MAX = 3, 35
 TXT = {
     "pt": dict(save="Salvar", load="Carregar", fill_on="Preencher: sim", fill_off="Preencher: não", erode="Erodir",
                grow="Crescer", undo="Desfazer", holes="Tapar buracos", core="Núcleo convexo", hull="Casco convexo",

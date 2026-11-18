@@ -6,8 +6,8 @@ Two self-contained pages; open them in any browser, nothing to install.
 - `sequence_lab_v1.html`: the simulator. The heading selects the sequence (Spin Echo, Fast Spin Echo, FLAIR, or
   any sequence file loaded from disk). Below it: the sequence diagram with a time cursor; the N x N pixel array
   (Bloch spheres up to N = 9, transverse arrows only above that); k-space filling in as the samples are acquired;
-  the inverse Fourier reconstruction, one mode at a time, with the ideal image and the residual; a tab with the
-  equations behind each pane.
+  the inverse Fourier reconstruction, one mode at a time, after the phase of the echo is removed, with the ideal
+  image and the residual; a tab with the equations behind each pane.
 - `phantom_editor_v1.html`: the phantom editor. The simulator links to it and it links back, so keep the two
   files in the same folder.
 
@@ -15,7 +15,7 @@ Hosted copies: https://w40n5k1.github.io/MRIsim/ and https://w40n5k1.github.io/M
 (the path is case-sensitive).
 
 Controls of the simulator, row by row: acquisition (play, restart, step by event, speed); the parameters declared
-by the sequence file, then the global T1/T2 override; object (the phantom), N (odd, 3 to 15), linear intensity,
+by the sequence file, then the global T1/T2 override; object (the phantom), N (odd, 3 to 17), linear intensity,
 compress TR, language (pt/en); copy diagram SVG, load sequence (.json), copy sequence JSON, load phantom (.json),
 phantom editor. A painted phantom (one that carries a `grid`) sets N to its own size when chosen or loaded.
 

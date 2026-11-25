@@ -9,8 +9,8 @@
   "phantom": "brain",
   "envelope": false,
   "params": [
-    { "id": "TI", "label": "TI", "min": 50, "max": 3500, "step": 50, "default": 2750, "unit": "ms", "title": { "pt": "tempo de inversão (centro do 180° de inversão ao centro do 90°)", "en": "inversion time (center of the inversion 180° to center of the 90°)" } },
-    { "id": "ESP", "label": "ESP", "min": 26, "max": 60, "step": 2, "default": 26, "unit": "ms", "title": { "pt": "espaçamento entre ecos", "en": "echo spacing" } },
+    { "id": "TI", "label": "TI", "min": 50, "max": 3500, "step": 50, "default": 2900, "unit": "ms", "title": { "pt": "tempo de inversão (centro do 180° de inversão ao centro do 90°)", "en": "inversion time (center of the inversion 180° to center of the 90°)" } },
+    { "id": "ESP", "label": "ESP", "min": 10, "max": 60, "step": 2, "default": 26, "unit": "ms", "title": { "pt": "espaçamento entre ecos", "en": "echo spacing" } },
     { "id": "order", "type": "select", "default": "linear", "label": { "pt": "ordem de k_y", "en": "k_y order" },
       "options": [
         { "value": "linear", "label": { "pt": "linear (−(N−1)/2…+(N−1)/2)", "en": "linear (−(N−1)/2…+(N−1)/2)" }, "values": { "pe": "range(-HALF, HALF, 1)" } },
@@ -18,7 +18,7 @@
         { "value": "centerLast", "label": { "pt": "centro por último", "en": "center last" }, "values": { "pe": "rev(centric(HALF))" } }
       ] }
   ],
-  "constants": { "w": 5, "tLead": 2, "tauPre": 6, "tauPe": 4, "tauRo": 12, "tTail": 300 },
+  "constants": { "w": 2, "tLead": 2, "tauPre": 3, "tauPe": 2, "tauRo": 4, "tTail": 300 },
   "shots": 1,
   "vars": { "Apre": "N/2", "NECHO": "N", "tInv": "tLead + w/2", "t90": "tInv + TI", "tActive": "t90 + NECHO*ESP + tauRo/2 + tauPe", "iTE": "indexOf(pe, 0)", "TEeff": "(iTE + 1)*ESP" },
   "TR": "tActive + tTail",
@@ -47,14 +47,14 @@
       "Sequência: 180° de inversão (em torno de x; M⊥ é zero em repouso, só M_z é invertido), espera TI, e então o fast spin echo: 90°, pré-fasador, N pulsos de 180° com uma linha k_y por eco. Recuperação durante TI: M_z(TI) = M₀(1 − 2e^{−TI/T1}); zera em TI = T1·ln 2. Para o líquor (T1 ≈ 4000 ms) isso dá TI ≈ 2770 ms; substância branca (850 ms) e cinzenta (1300 ms) já recuperaram boa parte de M₀ e dão sinal. É o FLAIR: imagem ponderada em T2 com o líquor escuro, onde lesões periventriculares deixam de se esconder atrás do líquor brilhante.",
       "Em TI menor que T1·ln 2 de um tecido, seu M_z no 90° é negativo: o sinal nasce com fase π (ciano no espaço k, e vetores apontando para −x nas esferas). A imagem é mostrada em módulo, como no scanner, então esse tecido aparece claro, não escuro: só o tecido com M_z = 0 some.",
       "O intervalo TI (milhares de ms) aparece comprimido no diagrama, como as caudas de TR: o tracejado marca o trecho fora de escala. Desmarque \"comprimir TR\" para ver em escala.",
-      "Borramento do trem de ecos: cada eco perde e^{−ESP/T2} (28% para a substância branca com ESP = 26 ms); com N linhas o filtro em k_y tem largura ≈ N·ESP/(π·T2) pixels (≈ 0,9 pixel com N = 9), uma fração grande de uma imagem de N pixels. Com a ordem \"centro primeiro\" o filtro é passa-baixa e o líquor nulo reaparece cinza por borramento das vizinhanças; a ordem linear (padrão aqui) preserva muito melhor o módulo. Num scanner com 256 linhas o mesmo ESP/T2 borra uma fração de pixel.",
+      "Borramento do trem de ecos: cada eco perde e^{−ESP/T2} (28% para a substância branca com ESP = 26 ms); com N linhas o filtro em k_y tem largura ≈ N·ESP/(π·T2) pixels (≈ 0,9 pixel com N = 9), uma fração grande de uma imagem de N pixels. Com a ordem \"centro primeiro\" o filtro é passa-baixa e o líquor nulo reaparece cinza por borramento das vizinhanças; a ordem linear (padrão aqui) preserva muito melhor o módulo. Num scanner com 256 linhas o mesmo ESP/T2 borra uma fração de pixel. Por isso o TI padrão (2900 ms) fica um pouco acima de T1·ln 2 do líquor (2773 ms): com ESP = 26 ms o líquor da imagem fica mais escuro com TI ≈ 2900 ms do que com 2750 ms (relação líquor/substância cinzenta no módulo, cérebro, N = 15: 0,21 contra 0,40; N = 9: 0,05 contra 0,16), embora o M_z do líquor no 90° seja então +3% de M₀ e não zero. Valor empírico; não foi derivado. Com ESP menor o borramento cai e o melhor TI se aproxima de 2800–2850 ms (ESP = 10 ms, N = 15: 0,04 com TI = 2800 contra 0,07 com 2750).",
       "Objetos: com \"cérebro\", cada pixel tem (M₀, T1, T2) do seu tecido; com \"T1/T2 globais\" marcado, TI = T1·ln 2 anula a imagem inteira."
     ],
     "en": [
       "Sequence: inversion 180° (about x; M⊥ is zero at rest, only M_z is inverted), a wait TI, then the fast spin echo: 90°, prephaser, N 180° pulses with one k_y line per echo. Recovery during TI: M_z(TI) = M₀(1 − 2e^{−TI/T1}); it crosses zero at TI = T1·ln 2. For CSF (T1 ≈ 4000 ms) that is TI ≈ 2770 ms; white (850 ms) and gray matter (1300 ms) have recovered most of M₀ and give signal. That is FLAIR: a T2-weighted image with dark CSF, where periventricular lesions stop hiding behind bright CSF.",
       "At TI below a tissue's T1·ln 2, its M_z at the 90° is negative: the signal is born with phase π (cyan in k-space, vectors pointing to −x in the spheres). The image is shown as a magnitude, as on the scanner, so that tissue appears bright, not dark: only the tissue with M_z = 0 vanishes.",
       "The TI interval (thousands of ms) is compressed in the diagram, like the TR tails: the dashed stretch is off scale. Uncheck \"compress TR\" to see it to scale.",
-      "Echo-train blurring: each echo loses e^{−ESP/T2} (28% for white matter with ESP = 26 ms); with N lines the k_y filter has a width ≈ N·ESP/(π·T2) pixels (≈ 0.9 pixel at N = 9), a large fraction of an N-pixel image. With \"center first\" the filter is low-pass and the nulled CSF reappears gray by blurring from its neighbors; linear order (the default here) preserves the magnitude far better. A 256-line scanner image with the same ESP/T2 blurs by a fraction of a pixel.",
+      "Echo-train blurring: each echo loses e^{−ESP/T2} (28% for white matter with ESP = 26 ms); with N lines the k_y filter has a width ≈ N·ESP/(π·T2) pixels (≈ 0.9 pixel at N = 9), a large fraction of an N-pixel image. With \"center first\" the filter is low-pass and the nulled CSF reappears gray by blurring from its neighbors; linear order (the default here) preserves the magnitude far better. A 256-line scanner image with the same ESP/T2 blurs by a fraction of a pixel. That is why the default TI (2900 ms) sits a little above the CSF value of T1·ln 2 (2773 ms): at ESP = 26 ms the CSF in the image is darker at TI ≈ 2900 ms than at 2750 ms (CSF/gray-matter ratio in the magnitude image, brain, N = 15: 0.21 against 0.40; N = 9: 0.05 against 0.16), even though the CSF M_z at the 90° is then +3% of M₀ and not zero. An empirical value, not derived. With a smaller ESP the blur drops and the best TI moves toward 2800–2850 ms (ESP = 10 ms, N = 15: 0.04 at TI = 2800 against 0.07 at 2750).",
       "Phantoms: with \"brain\", each pixel has the (M₀, T1, T2) of its tissue; with \"global T1/T2\" checked, TI = T1·ln 2 nulls the whole image."
     ]
   }

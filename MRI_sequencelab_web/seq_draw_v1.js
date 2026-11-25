@@ -73,7 +73,13 @@
     const bandX = i => x(S.bands[i].t), bandW = i => Math.min(x(S.bands[i].t1), L.xOfU(L.uEnd)) - bandX(i);
     S.bands.forEach((bd, i) => { if (i % 2 === 1) out.push(`<rect x="${f(bandX(i))}" y="12" width="${f(bandW(i))}" height="${H - 24}" fill="${C.band}"/>`); });
     out.push(`<rect id="trHighlight" x="${f(bandX(0))}" y="12" width="${f(bandW(0))}" height="${H - 24}" fill="${C.hl}" opacity="0"/>`);
-    S.bands.forEach((bd, i) => { const xm = bandX(i) + bandW(i) / 2; out.push(`<text class="trh" id="trh${i}" x="${f(xm)}" y="17" text-anchor="middle" font-size="13" fill="${C.text}">${markup(loc(bd.label), 13)}</text>`); });
+    // a band label is shrunk, then cut to the text before its first " · ", then left out, so that labels of narrow bands never overlap
+    const textW = (s, size) => s.replace(/[_^{}]/g, '').length * size * 0.6;
+    const bandLabel = (s, bw) => {
+      for (const c of [s, s.split(' · ')[0]]) for (let size = 13; size >= 10; size--) if (textW(c, size) <= bw - 4) return { s: c, size };
+      return { s: '', size: 13 };
+    };
+    S.bands.forEach((bd, i) => { const xm = bandX(i) + bandW(i) / 2, b = bandLabel(loc(bd.label), bandW(i)); out.push(`<text class="trh" id="trh${i}" x="${f(xm)}" y="17" text-anchor="middle" font-size="${b.size}" fill="${C.text}">${markup(b.s, b.size)}</text>`); });
     // baselines and row labels
     for (const [key, y] of Object.entries(R)) {
       for (const pc of pieces(L, S, 0, S.tEnd)) out.push(`<line x1="${f(x(pc.t0))}" y1="${y}" x2="${f(x(pc.t1))}" y2="${y}" stroke="${C.base}" stroke-width="1.2"${pc.dashed ? ' stroke-dasharray="5 5"' : ''}/>`);
